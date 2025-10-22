@@ -1,4 +1,4 @@
-//// ==UserScript==
+// ==UserScript==
 // @name         Thread Tracker
 // @namespace    http://tampermonkey.net/
 // @version      2.8
