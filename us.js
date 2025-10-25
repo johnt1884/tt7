@@ -9376,9 +9376,9 @@ function setupFilterWindow() {
     // --- Initial Actions / Main Execution ---
     function applyDefaultSettings() {
         const defaults = {
-            "otkTrackedKeywords": "otk, twitch, OTK & Company",
+            "otkTrackedKeywords": "",
             "otkSuspendAfterInactiveMinutes": 60,
-            "otkMediaLoadMode": "cache_only",
+            "otkMediaLoadMode": "source_first",
             "otkBackgroundUpdatesDisabled": false,
             "otkClockEnabled": true,
             "otkPipModeEnabled": true,
@@ -9427,16 +9427,41 @@ function setupFilterWindow() {
                 "otkThreadTitleAnimationDirection": "Down"
             },
             "otkThreadTitleColors": [
-                "#e6194B", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0",
-                "#f032e6", "#bcf60c", "#008080", "#e6beff", "#912499", "#800000", "#aaffc3",
-                "#cbcb25", "#000075", "#ffffff"
+                "#e6194B",
+                "#3cb44b",
+                "#ffe119",
+                "#4363d8",
+                "#f58231",
+                "#911eb4",
+                "#46f0f0",
+                "#f032e6",
+                "#bcf60c",
+                "#008080",
+                "#e6beff",
+                "#912499",
+                "#800000",
+                "#aaffc3",
+                "#cbcb25",
+                "#000075",
+                "#ffffff"
             ],
-            "otkClockPosition": { "top": "71px", "left": "1284px" },
-            "otkCountdownPosition": { "top": "-5px", "left": "1522px" },
-            "otkClocks": [
-                { "id": 1756699206552, "timezone": "America/Chicago", "displayPlace": "Austin" },
-                { "id": 1756699263949, "timezone": "America/Los_Angeles", "displayPlace": "Los Angeles" }
-            ]
+            "otkClockPosition": {
+                "top": "71px",
+                "left": "1284px"
+            },
+            "otkCountdownPosition": {
+                "top": "-5px",
+                "left": "1522px"
+            },
+            "otkClocks": [{
+                "id": 1756699206552,
+                "timezone": "America/Chicago",
+                "displayPlace": "Austin"
+            }, {
+                "id": 1756699263949,
+                "timezone": "America/Los_Angeles",
+                "displayPlace": "Los Angeles"
+            }]
         };
 
         Object.keys(defaults).forEach(key => {
