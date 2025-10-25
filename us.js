@@ -10002,7 +10002,15 @@ function setupFilterWindow() {
             'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
             BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
             'otkPipModeEnabled', DEBUG_MODE_KEY, THEME_SETTINGS_KEY, THREAD_TITLE_COLORS_KEY,
-            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks'
+            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
+            // Begin missing keys
+            FILTER_RULES_V2_KEY,
+            PINNED_MESSAGE_ID_KEY,
+            BLURRED_IMAGES_KEY,
+            BLOCKED_THREADS_KEY,
+            UNREAD_MESSAGE_IDS_KEY,
+            'otkCollapsibleStates'
+            // End missing keys
         ];
 
         keysToExport.forEach(key => {
