@@ -142,8 +142,8 @@ document.addEventListener("visibilitychange", () => {
     let originalTitle = document.title;
     let otkViewer = null;
     let cityData = [];
-    // Debug mode (load from localStorage, default to true)
-    let DEBUG_MODE = localStorage.getItem(DEBUG_MODE_KEY) === null ? true : localStorage.getItem(DEBUG_MODE_KEY) === 'true';
+    // Debug mode (load from localStorage, default to false)
+    let DEBUG_MODE = localStorage.getItem(DEBUG_MODE_KEY) === null ? false : localStorage.getItem(DEBUG_MODE_KEY) === 'true';
 
     const consoleLog = (...args) => {
         if (DEBUG_MODE) {
@@ -7491,6 +7491,7 @@ function createSectionHeading(text) {
         bgUpdateCheckbox.checked = localStorage.getItem(BACKGROUND_UPDATES_DISABLED_KEY) !== 'true';
 
         bgUpdateCheckbox.addEventListener('change', () => {
+            stopBackgroundRefresh();
             if (bgUpdateCheckbox.checked) {
                 // If checked, updates are ENABLED
                 localStorage.setItem(BACKGROUND_UPDATES_DISABLED_KEY, 'false');
@@ -7498,7 +7499,6 @@ function createSectionHeading(text) {
                 consoleLog('Background updates enabled via checkbox.');
             } else {
                 // If not checked, updates are DISABLED
-                stopBackgroundRefresh();
                 if (countdownIntervalId) {
                     clearInterval(countdownIntervalId);
                     countdownIntervalId = null;
@@ -7562,7 +7562,10 @@ function createSectionHeading(text) {
             localStorage.setItem('otkClockEnabled', isEnabled);
             const clockElement = document.getElementById('otk-clock');
             if (clockElement) {
-                clockElement.style.display = isEnabled ? 'block' : 'none';
+                clockElement.style.display = isEnabled ? 'flex' : 'none';
+                if (isEnabled) {
+                    renderClocks(); // Re-render to apply layout
+                }
             }
         });
 
@@ -9376,8 +9379,8 @@ function setupFilterWindow() {
     // --- Initial Actions / Main Execution ---
     function applyDefaultSettings() {
         const defaults = {
-            "otkTrackedKeywords": "",
-            "otkSuspendAfterInactiveMinutes": 60,
+            "otkTrackedKeywords": "otk",
+            "otkSuspendAfterInactiveMinutes": 30,
             "otkMediaLoadMode": "source_first",
             "otkBackgroundUpdatesDisabled": false,
             "otkClockEnabled": true,
@@ -9386,6 +9389,7 @@ function setupFilterWindow() {
             "otkThemeSettings": {
                 "guiBackgroundImageUrl": "(Local file used)",
                 "countdownLabelTextColor": "#ffffff",
+                "pipBackgroundColor": "#1a1a1a",
                 "viewerBackgroundImageUrl": "",
                 "guiBgRepeat": "repeat",
                 "guiBgSize": "cover",
@@ -9427,23 +9431,7 @@ function setupFilterWindow() {
                 "otkThreadTitleAnimationDirection": "Down"
             },
             "otkThreadTitleColors": [
-                "#e6194B",
-                "#3cb44b",
-                "#ffe119",
-                "#4363d8",
-                "#f58231",
-                "#911eb4",
-                "#46f0f0",
-                "#f032e6",
-                "#bcf60c",
-                "#008080",
-                "#e6beff",
-                "#912499",
-                "#800000",
-                "#aaffc3",
-                "#cbcb25",
-                "#000075",
-                "#ffffff"
+                "#e6194B", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#bcf60c", "#008080", "#e6beff", "#912499", "#800000", "#aaffc3", "#cbcb25", "#000075", "#ffffff"
             ],
             "otkClockPosition": {
                 "top": "71px",
@@ -9453,21 +9441,15 @@ function setupFilterWindow() {
                 "top": "-5px",
                 "left": "1522px"
             },
-            "otkClocks": [{
-                "id": 1756699206552,
-                "timezone": "America/Chicago",
-                "displayPlace": "Austin"
-            }, {
-                "id": 1756699263949,
-                "timezone": "America/Los_Angeles",
-                "displayPlace": "Los Angeles"
-            }]
+            "otkClocks": [
+                { "id": 1756699206552, "timezone": "America/Chicago", "displayPlace": "Austin" },
+                { "id": 1756699263949, "timezone": "America/Los_Angeles", "displayPlace": "Los Angeles" }
+            ]
         };
 
         Object.keys(defaults).forEach(key => {
             if (localStorage.getItem(key) === null) {
                 let valueToSet = defaults[key];
-                // The new defaults are already in the correct format, but we need to stringify objects.
                 if (typeof valueToSet === 'object') {
                     valueToSet = JSON.stringify(valueToSet);
                 }
@@ -10072,7 +10054,15 @@ function setupFilterWindow() {
             'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
             BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
             'otkPipModeEnabled', DEBUG_MODE_KEY, THEME_SETTINGS_KEY, THREAD_TITLE_COLORS_KEY,
-            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks'
+            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
+            // Begin missing keys
+            FILTER_RULES_V2_KEY,
+            PINNED_MESSAGE_ID_KEY,
+            BLURRED_IMAGES_KEY,
+            BLOCKED_THREADS_KEY,
+            UNREAD_MESSAGE_IDS_KEY,
+            'otkCollapsibleStates'
+            // End missing keys
         ];
 
         keysToExport.forEach(key => {
