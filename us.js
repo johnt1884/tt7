@@ -10016,7 +10016,8 @@ function setupFilterWindow() {
             BLURRED_IMAGES_KEY,
             BLOCKED_THREADS_KEY,
             UNREAD_MESSAGE_IDS_KEY,
-            'otkCollapsibleStates'
+            'otkCollapsibleStates',
+            VIEWER_OPEN_KEY
             // End missing keys
         ];
 
@@ -10061,7 +10062,8 @@ function setupFilterWindow() {
             BLURRED_IMAGES_KEY,
             BLOCKED_THREADS_KEY,
             UNREAD_MESSAGE_IDS_KEY,
-            'otkCollapsibleStates'
+            'otkCollapsibleStates',
+            VIEWER_OPEN_KEY
             // End missing keys
         ];
 
