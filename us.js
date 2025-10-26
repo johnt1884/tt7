@@ -1,4 +1,4 @@
-// ==UserScript==
+true// ==UserScript==
 // @name         Thread Tracker
 // @namespace    http://tampermonkey.net/
 // @version      2.8
@@ -9864,6 +9864,105 @@ function setupFilterWindow() {
 
     panel.innerHTML = ''; // Clear existing content
 
+    const orderedKeysConfig = [
+        // GUI
+        { section: "GUI", storageKey: 'titleTextColor', label: "Title Font Colour" },
+        { section: "GUI", storageKey: 'guiBgColor', label: "Background Colour" },
+        { section: "GUI", storageKey: 'guiBackgroundImageUrl', label: 'Background Image URL' },
+        { section: "GUI", storageKey: 'guiBgSize', label: 'Background Image Size' },
+        { section: "GUI", storageKey: 'guiBgRepeat', label: 'Background Image Repeat Mode' },
+        { section: "GUI", storageKey: 'guiBgPosition', label: 'Background Image Position' },
+        { section: "GUI", storageKey: 'guiThreadBoxOutlineColor', label: "Thread Title Box Outline Colour" },
+        { section: "GUI", storageKey: 'guiThreadListTitleColor', label: "Thread Titles Text" },
+        { section: "GUI", storageKey: 'guiThreadListTimeColor', label: "Thread Times Text" },
+        { section: "GUI", storageKey: 'otkThreadTimePosition', label: 'Thread Time Position' },
+        { section: "GUI", storageKey: 'otkThreadTimeDividerSymbol', label: "Thread Title/Thread Clock Divider" },
+        { section: "GUI", storageKey: 'otkThreadTimeDividerColor', label: "Thread Title/Thread Time Divider Colour" },
+        { section: "GUI", storageKey: 'otkThreadTimeBracketStyle', label: 'Thread Time Bracket Style' },
+        { section: "GUI", storageKey: 'otkThreadTimeBracketColor', label: "Thread Time Bracket Colour" },
+        { section: "GUI", storageKey: 'otkThreadTitleAnimationSpeed', label: "Thread Title Animation Speed" },
+        { section: "GUI", storageKey: 'otkThreadTitleAnimationDirection', label: 'Thread Title Animation Direction' },
+        { section: "GUI", storageKey: 'actualStatsTextColor', label: "Thread(s) Stats Font Colour" },
+        { section: "GUI", storageKey: 'statsDashColor', label: "Thread(s) Stats Bullet point Colour" },
+        { section: "GUI", storageKey: 'backgroundUpdatesStatsTextColor', label: "Background Updates Stats Font Colour" },
+        { section: "GUI", storageKey: 'cogIconColor', label: "Options Icon Colour" },
+        { section: "GUI", storageKey: 'countdownBgColor', label: "Background Updates Background Colour" },
+        { section: "GUI", storageKey: 'countdownLabelTextColor', label: "Background Updates Main Font Colour" },
+        { section: "GUI", storageKey: 'countdownTimerTextColor', label: "Background Updates Timer Font Colour" },
+        { section: "GUI", storageKey: 'clockBgColor', label: "Clock(s) Background Colour" },
+        { section: "GUI", storageKey: 'clockTextColor', label: "Clock(s) Font Colour" },
+        { section: "GUI", storageKey: 'clockBorderColor', label: "Clock(s) Border Colour" },
+        { section: "GUI", storageKey: 'clockDividerColor', label: "Clock Divider Colour" },
+        { section: "GUI", storageKey: 'clockSearchBgColor', label: "Clock Search Background Colour" },
+        { section: "GUI", storageKey: 'clockSearchTextColor', label: "Clock Search Font Colour" },
+        { section: "GUI", storageKey: 'guiButtonBgColor', label: "Button Background Colour" },
+        { section: "GUI", storageKey: 'guiButtonHoverBgColor', label: "Button Mouseover Background Colour" },
+        { section: "GUI", storageKey: 'guiButtonActiveBgColor', label: "Button Clicked Background Colour" },
+        { section: "GUI", storageKey: 'guiButtonTextColor', label: "Button Font Colour" },
+        { section: "GUI", storageKey: 'guiButtonBorderColor', label: "Button Border Colour" },
+        { section: "GUI", storageKey: 'guiBottomBorderColor', label: "Bottom Border" },
+        // Viewer
+        { section: "Viewer", storageKey: 'viewerBgColor', label: "Viewer Background Colour" },
+        { section: "Viewer", storageKey: 'viewerBackgroundImageUrl', label: 'Viewer Background Image' },
+        { section: "Viewer", storageKey: 'viewerBgSize', label: 'Viewer Background Image Size' },
+        { section: "Viewer", storageKey: 'viewerBgRepeat', label: 'Viewer Background Image Repeat Mode' },
+        { section: "Viewer", storageKey: 'viewerBgPosition', label: 'Viewer Background Image Position' },
+        { section: "Viewer", storageKey: 'viewerThreadBoxOutlineColor', label: "Thread Title Box Outline Colour" },
+        { section: "Viewer", storageKey: 'otkShowNewMessagesElements', label: 'Show New Messages Elements' },
+        { section: "Viewer", storageKey: 'otkNewMessagesSeparatorAlignment', label: 'New Messages Indicator Position' },
+        { section: "Viewer", storageKey: 'newMessagesDividerColor', label: "New Messages Indicator Divider Colour" },
+        { section: "Viewer", storageKey: 'newMessagesFontSize', label: "New Messages Indicator Font Size" },
+        { section: "Viewer", storageKey: 'newMessagesFontColor', label: "New Messages Indicator Font Colour" },
+        { section: "Viewer", storageKey: 'blockedContentFontColor', label: "Blocked Content Indicator Font Colour" },
+        { section: "Viewer", storageKey: 'pinHighlightBgColor', label: "Pinned Message Highlight Colour" },
+        { section: "Viewer", storageKey: 'pinHighlightBorderColor', label: "Pinned Message Outline Colour" },
+        { section: "Viewer", storageKey: 'plusIconBgColor', label: "Next Message Icon Background Colour" },
+        { section: "Viewer", storageKey: 'plusIconColor', label: "Next Message Icon Colour" },
+        // PiP Mode
+        { section: "PiP Mode", storageKey: 'pipBackgroundColor', label: "PiP Mode Background Colour" },
+        { section: "PiP Mode", storageKey: 'pipBackgroundImageUrl', label: 'Pip Mode Background Image URL' },
+        { section: "PiP Mode", storageKey: 'pipBgSize', label: 'PiP Mode Background Image Size' },
+        { section: "PiP Mode", storageKey: 'pipBgRepeat', label: 'PiP Mode Background Repeat Mode' },
+        { section: "PiP Mode", storageKey: 'pipBgPosition', label: 'PiP Mode Background Position' },
+        // Quick Reply Window
+        { section: "Quick Reply Window", storageKey: 'qrHeaderBgColor', label: "Header Background Colour" },
+        { section: "Quick Reply Window", storageKey: 'qrHeaderTextColor', label: "Header Font Colour" },
+        { section: "Quick Reply Window", storageKey: 'qrBgColor', label: "Background Colour" },
+        { section: "Quick Reply Window", storageKey: 'qrBorderColor', label: "Border Colour" },
+        { section: "Quick Reply Window", storageKey: 'qrTextareaBgColor', label: "Text Area Background Colour" },
+        { section: "Quick Reply Window", storageKey: 'qrTextareaTextColor', label: "Text Area Font Colour" },
+        // Messages (Odds)
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddHeaderTextColor', label: "Header Font Colour" },
+        { section: "Messages (Odds)", storageKey: 'viewerHeaderBorderColorOdd', label: "Header Underline Colour" },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddContentFontSize', label: "Font Size (px)" },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddBgColor', label: "Background Colour" },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddTextColor', label: "Content Font Colour" },
+        { section: "Messages (Odds)", storageKey: 'ownMsgBgColorOdd', label: "Own Post Background Colour" },
+        { section: "Messages (Odds)", storageKey: 'blockIconColorOdd', label: "Filter Icon" },
+        { section: "Messages (Odds)", storageKey: 'pinIconColorOdd', label: "Pin Icon" },
+        { section: "Messages (Odds)", storageKey: 'pinIconColorActive', label: "Pin Icon (Active)" },
+        // Messages (Evens)
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenHeaderTextColor', label: "Header Font Colour" },
+        { section: "Messages (Evens)", storageKey: 'viewerHeaderBorderColorEven', label: "Header Underline Colour" },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenContentFontSize', label: "Font Size (px)" },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenBgColor', label: "Background Colour" },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenTextColor', label: "Content Font Colour" },
+        { section: "Messages (Evens)", storageKey: 'ownMsgBgColorEven', label: "Own Post Background Colour" },
+        { section: "Messages (Evens)", storageKey: 'blockIconColorEven', label: "Filter Icon" },
+        { section: "Messages (Evens)", storageKey: 'pinIconColorEven', label: "Pin Icon" },
+        // Options Panel
+        { section: "Options Panel", storageKey: 'optionsTextColor', label: "Panel Text" },
+        { section: "Options Panel", storageKey: 'optionsMainBgColor', label: "Main Background Colour" },
+        { section: "Options Panel", storageKey: 'optionsAltBgColor', label: "Alternate Background Colour" },
+        // Loading Screen
+        { section: "Loading Screen", storageKey: 'loadingOverlayBaseHexColor', label: "Overlay Background Colour" },
+        { section: "Loading Screen", storageKey: 'loadingOverlayOpacity', label: "Overlay Opacity" },
+        { section: "Loading Screen", storageKey: 'loadingTextColor', label: "Font Colour" },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarBgColor', label: "Progress Bar Background colour" },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarFillColor', label: "Progress Bar Fill Colour" },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarTextColor', label: "Progress Bar Font Colour" },
+    ];
+
     // --- Dynamic Profiles Section ---
     const profilesContainer = document.createElement('div');
     profilesContainer.id = 'otk-profiles-container';
@@ -10047,46 +10146,76 @@ function setupFilterWindow() {
         const filename = prompt("Enter a name for your settings file:", "otk-tracker-settings.json");
         if (!filename) return;
 
-        const allSettings = {};
+        const groupedSettings = {};
         const currentThemeSettings = JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY) || '{}');
-        const snapshotThemeSettings = { ...currentThemeSettings, ...pendingThemeChanges };
-        const keysToExport = [
-            OTK_TRACKED_KEYWORDS_KEY, OTK_BLOCKED_KEYWORDS_KEY, 'otkMinUpdateSeconds',
-            'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
-            BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
-            'otkPipModeEnabled', DEBUG_MODE_KEY, THEME_SETTINGS_KEY, THREAD_TITLE_COLORS_KEY,
-            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
-            // Begin missing keys
-            FILTER_RULES_V2_KEY,
-            PINNED_MESSAGE_ID_KEY,
-            BLURRED_IMAGES_KEY,
-            BLOCKED_THREADS_KEY,
-            UNREAD_MESSAGE_IDS_KEY,
-            'otkCollapsibleStates',
-            VIEWER_OPEN_KEY
-            // End missing keys
-        ];
+        const allLocalStorageKeys = Object.keys(localStorage);
 
-        keysToExport.forEach(key => {
-            let value = localStorage.getItem(key);
-            if (value !== null) {
-                try {
-                    let parsedValue = (key === THEME_SETTINGS_KEY) ? snapshotThemeSettings : JSON.parse(value);
-                    if (key === THEME_SETTINGS_KEY && typeof parsedValue === 'object') {
-                        Object.keys(parsedValue).forEach(themeKey => {
-                            if (typeof parsedValue[themeKey] === 'string' && parsedValue[themeKey].startsWith('data:image')) {
-                                parsedValue[themeKey] = '(Local file used)';
-                            }
-                        });
-                    }
-                    allSettings[key] = parsedValue;
-                } catch (e) {
-                    allSettings[key] = value;
-                }
+        orderedKeysConfig.forEach(config => {
+            const { section, storageKey, label } = config;
+
+            // Ensure the section exists in the output object
+            if (!groupedSettings[section]) {
+                groupedSettings[section] = {};
             }
+
+            let value;
+            // Check if the key belongs to theme settings first
+            if (currentThemeSettings.hasOwnProperty(storageKey)) {
+                value = currentThemeSettings[storageKey];
+            } else if (allLocalStorageKeys.includes(storageKey)) {
+                value = localStorage.getItem(storageKey);
+                 // Try to parse if it's a JSON string, otherwise keep as string
+                try {
+                    const parsed = JSON.parse(value);
+                    value = parsed;
+                } catch (e) {
+                    // Not a valid JSON string, keep as is
+                }
+            } else {
+                // Key not found in either, skip it or set to null
+                value = null;
+            }
+
+            // Handle special cases like local file data URLs
+            if (typeof value === 'string' && value.startsWith('data:image')) {
+                value = '(Local file used)';
+            }
+
+
+            groupedSettings[section][label] = value;
         });
 
-        const settingsString = JSON.stringify(allSettings, null, 2);
+        // Add non-UI settings that should still be exported
+        const nonUiKeysToExport = {
+            "Non-UI": [
+                OTK_TRACKED_KEYWORDS_KEY, OTK_BLOCKED_KEYWORDS_KEY, 'otkMinUpdateSeconds',
+                'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
+                BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
+                'otkPipModeEnabled', DEBUG_MODE_KEY, THREAD_TITLE_COLORS_KEY,
+                IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
+                FILTER_RULES_V2_KEY, PINNED_MESSAGE_ID_KEY, BLURRED_IMAGES_KEY,
+                BLOCKED_THREADS_KEY, UNREAD_MESSAGE_IDS_KEY, 'otkCollapsibleStates', VIEWER_OPEN_KEY
+            ]
+        };
+
+        Object.keys(nonUiKeysToExport).forEach(section => {
+            if (!groupedSettings[section]) {
+                groupedSettings[section] = {};
+            }
+            nonUiKeysToExport[section].forEach(key => {
+                 let value = localStorage.getItem(key);
+                 if (value !== null) {
+                    try {
+                        groupedSettings[section][key] = JSON.parse(value);
+                    } catch (e) {
+                        groupedSettings[section][key] = value;
+                    }
+                 }
+            });
+        });
+
+
+        const settingsString = JSON.stringify(groupedSettings, null, 2);
         const blob = new Blob([settingsString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -10119,11 +10248,51 @@ function setupFilterWindow() {
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const settings = JSON.parse(event.target.result);
-                    Object.keys(settings).forEach(key => {
-                        const value = settings[key];
-                        localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : value);
+                    const groupedSettings = JSON.parse(event.target.result);
+
+                    // Create a reverse map from label to storageKey, nested by section
+                    const labelToStorageKeyMap = {};
+                    orderedKeysConfig.forEach(config => {
+                        if (!labelToStorageKeyMap[config.section]) {
+                            labelToStorageKeyMap[config.section] = {};
+                        }
+                        labelToStorageKeyMap[config.section][config.label] = config.storageKey;
                     });
+
+                    let currentThemeSettings = JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY) || '{}');
+
+                    for (const section in groupedSettings) {
+                        if (groupedSettings.hasOwnProperty(section)) {
+                            const settingsInSection = groupedSettings[section];
+                            if (section === 'Non-UI') {
+                                // These are general settings, saved directly to localStorage
+                                for (const key in settingsInSection) {
+                                    if (settingsInSection.hasOwnProperty(key) && key !== THEME_SETTINGS_KEY) {
+                                        const value = settingsInSection[key];
+                                        localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+                                    }
+                                }
+                            } else if (labelToStorageKeyMap[section]) {
+                                // These are theme settings
+                                for (const label in settingsInSection) {
+                                    if (settingsInSection.hasOwnProperty(label)) {
+                                        const storageKey = labelToStorageKeyMap[section][label];
+                                        if (storageKey) {
+                                            const value = settingsInSection[label];
+                                            // Do not import placeholder for local files. The user must re-select them.
+                                            if (value !== '(Local file used)') {
+                                                currentThemeSettings[storageKey] = value;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Save the updated theme settings object
+                    localStorage.setItem(THEME_SETTINGS_KEY, JSON.stringify(currentThemeSettings));
+
                     alert('Settings loaded successfully. The page will now reload to apply all changes.');
                     location.reload();
                 } catch (err) {
