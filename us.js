@@ -1,4 +1,4 @@
-true// ==UserScript==
+// ==UserScript==
 // @name         Thread Tracker
 // @namespace    http://tampermonkey.net/
 // @version      2.8
@@ -5950,7 +5950,7 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
                 { "id": 1756699206552, "timezone": "America/Chicago", "displayPlace": "Austin" },
                 { "id": 1756699263949, "timezone": "America/Los_Angeles", "displayPlace": "Los Angeles" }
             ];
-            const defaultClockPosition = { "top": "71px", "left": "1284px" };
+            const defaultClockPosition = { "top": "-5px", "left": "1522px" };
 
             localStorage.setItem('otkClocks', JSON.stringify(defaultClocks));
             localStorage.setItem('otkClockPosition', JSON.stringify(defaultClockPosition));
@@ -6139,8 +6139,8 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
             if (confirm("Are you sure you want to revert to the default thread title colours?")) {
                 const defaultColors = [
                     "#e6194B", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0",
-                    "#f032e6", "#bcf60c", "#008080", "#e6beff", "#912499", "#800000", "#aaffc3",
-                    "#cbcb25", "#000075", "#ffffff"
+                    "#f032e6", "#bcf60c", "#008080", "#e6beff", "#9A6324", "#800000", "#aaffc3",
+                    "#808000", "#ffd8b1", "#000075", "#808080"
                 ];
                 localStorage.setItem(THREAD_TITLE_COLORS_KEY, JSON.stringify(defaultColors));
                 renderThreadTitleColorsOptions();
@@ -7649,40 +7649,40 @@ function createSectionHeading(text) {
         resetGeneralSettingsButton.style.cssText += "padding: 2px 8px; font-size: 11px; height: 25px; box-sizing: border-box; width: 100%;";
         resetGeneralSettingsButton.addEventListener('click', () => {
             if (confirm("Are you sure you want to reset all general settings to default?")) {
-                const generalSettingsKeys = [
-                    OTK_TRACKED_KEYWORDS_KEY,
-                    OTK_BLOCKED_KEYWORDS_KEY,
-                    'otkMinUpdateSeconds',
-                    'otkMaxUpdateSeconds',
-                    'otkSuspendAfterInactiveMinutes',
-                    'otkMediaLoadMode',
-                    BACKGROUND_UPDATES_DISABLED_KEY,
-                    'otkClockEnabled',
-                    'otkPipModeEnabled',
-                    DEBUG_MODE_KEY,
-                    'otkAutoLoadUpdates'
+                const generalSettingsConfig = [
+                    { storageKey: OTK_TRACKED_KEYWORDS_KEY, defaultValue: "otk, twitch, OTK & Company", elementId: 'otk-tracked-keywords-input', property: 'value' },
+                    { storageKey: OTK_BLOCKED_KEYWORDS_KEY, defaultValue: "", elementId: 'otk-blocked-keywords-input', property: 'value' },
+                    { storageKey: 'otkMinUpdateSeconds', defaultValue: null, elementId: 'otk-min-update-time-input', property: 'value', format: secondsToHHMMSS },
+                    { storageKey: 'otkMaxUpdateSeconds', defaultValue: null, elementId: 'otk-max-update-time-input', property: 'value', format: secondsToHHMMSS },
+                    { storageKey: 'otkSuspendAfterInactiveMinutes', defaultValue: '60', elementId: 'otk-suspend-after-inactive-select', property: 'value' },
+                    { storageKey: 'otkMediaLoadMode', defaultValue: 'source_first', elementId: 'otk-media-load-mode-select', property: 'value' },
+                    { storageKey: BACKGROUND_UPDATES_DISABLED_KEY, defaultValue: 'false', elementId: 'otk-enable-bg-update-checkbox', property: 'checked', valueMap: {'true': false, 'false': true} },
+                    { storageKey: 'otkAutoLoadUpdates', defaultValue: 'false', elementId: 'otk-auto-load-updates-checkbox', property: 'checked', valueMap: {'true': true, 'false': false} },
+                    { storageKey: 'otkClockEnabled', defaultValue: 'true', elementId: 'otk-clock-toggle-checkbox', property: 'checked', valueMap: {'true': true, 'false': false} },
+                    { storageKey: 'otkPipModeEnabled', defaultValue: 'true', elementId: 'otk-pip-mode-checkbox', property: 'checked', valueMap: {'true': true, 'false': false} },
+                    { storageKey: DEBUG_MODE_KEY, defaultValue: 'false', elementId: 'otk-debug-mode-checkbox', property: 'checked', valueMap: {'true': true, 'false': false} },
+                    { storageKey: 'otkMessageLimitEnabled', defaultValue: true, elementId: 'otk-message-limit-enable-checkbox', property: 'checked' },
+                    { storageKey: 'otkMessageLimitValue', defaultValue: 500, elementId: 'otk-message-limit-value-input', property: 'value' },
+                    { storageKey: IMAGE_BLUR_AMOUNT_KEY, defaultValue: 60, elementId: 'otk-image-blur-amount', property: 'value' }
                 ];
-                generalSettingsKeys.forEach(key => localStorage.removeItem(key));
 
-                // Reflect defaults in UI
-                document.getElementById('otk-tracked-keywords-input').value = "otk";
-                document.getElementById('otk-blocked-keywords-input').value = "";
-                document.getElementById('otk-min-update-time-input').value = secondsToHHMMSS(10);
-                document.getElementById('otk-max-update-time-input').value = secondsToHHMMSS(300);
-                document.getElementById('otk-suspend-after-inactive-select').value = '1';
-                document.getElementById('otk-media-load-mode-select').value = 'source_first';
-                const bgUpdateCheckbox = document.getElementById('otk-enable-bg-update-checkbox');
-                if(bgUpdateCheckbox) bgUpdateCheckbox.checked = true;
-                const autoLoadCheckbox = document.getElementById('otk-auto-load-updates-checkbox');
-                if(autoLoadCheckbox) autoLoadCheckbox.checked = false;
-                const clockToggleCheckbox = document.getElementById('otk-clock-toggle-checkbox');
-                if(clockToggleCheckbox) clockToggleCheckbox.checked = false;
-                const pipToggleCheckbox = document.getElementById('otk-pip-mode-checkbox');
-                if(pipToggleCheckbox) pipToggleCheckbox.checked = false;
-                const debugToggleCheckbox = document.getElementById('otk-debug-mode-checkbox');
-                if(debugToggleCheckbox) debugToggleCheckbox.checked = true;
-
-                alert("General settings have been reset to default. Some changes may require a page refresh to take full effect.");
+                generalSettingsConfig.forEach(config => {
+                    const element = document.getElementById(config.elementId);
+                    if (element) {
+                        let valueToSet = config.defaultValue;
+                        if (config.format) {
+                            valueToSet = config.format(valueToSet);
+                        }
+                        if (config.valueMap) {
+                            valueToSet = config.valueMap[String(config.defaultValue)];
+                        }
+                        element[config.property] = valueToSet;
+                        // Manually trigger change event to apply changes, which will also update localStorage.
+                        element.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+                
+                alert("General settings have been reset to default.");
             }
         });
         resetGeneralSettingsRow.appendChild(resetGeneralSettingsButton);
@@ -8559,8 +8559,8 @@ function createSectionHeading(text) {
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'pin-icon-active' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'pin-icon-active' }));
 
         // --- Options Panel Section ---
         const optionsPanelSection = createCollapsibleSubSection('Options Panel');
@@ -8571,7 +8571,7 @@ function createSectionHeading(text) {
         // --- Loading Screen Sub-Section (within Theme) ---
         const loadingScreenSection = createCollapsibleSubSection('Loading Screen');
         loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Overlay Background Colour:", storageKey: 'loadingOverlayBaseHexColor', cssVariable: '--otk-loading-overlay-base-hex-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'loading-overlay-base-hex' }));
-        loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Overlay Opacity:", storageKey: 'loadingOverlayOpacity', cssVariable: '--otk-loading-overlay-opacity', defaultValue: '0.8', inputType: 'number', min:0.0, max:1.0, step:0.05, idSuffix: 'loading-overlay-opacity' }));
+        loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Overlay Opacity:", storageKey: 'loadingOverlayOpacity', cssVariable: '--otk-loading-overlay-opacity', defaultValue: '1.0', inputType: 'number', min:0.0, max:1.0, step:0.05, idSuffix: 'loading-overlay-opacity' }));
         loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Font Colour:", storageKey: 'loadingTextColor', cssVariable: '--otk-loading-text-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'loading-text' }));
         loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Progress Bar Background colour:", storageKey: 'loadingProgressBarBgColor', cssVariable: '--otk-loading-progress-bar-bg-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'loading-progress-bg' }));
         loadingScreenSection.appendChild(createThemeOptionRow({ labelText: "Progress Bar Fill Colour:", storageKey: 'loadingProgressBarFillColor', cssVariable: '--otk-loading-progress-bar-fill-color', defaultValue: '#4CAF50', inputType: 'color', idSuffix: 'loading-progress-fill' }));
@@ -8590,94 +8590,6 @@ function createSectionHeading(text) {
         themeOptionsContainer.appendChild(resetAllColorsRow);
 
         // Helper function to get all theme configurations (used by save and reset)
-        function getAllOptionConfigs() {
-            // Note: labelText is not part of this config object, it's passed directly to createThemeOptionRow.
-            // This function is primarily for mapping storageKey, cssVariable, defaultValue, inputType, etc.
-            // The spelling change from "Color" to "Colour" happens in the createThemeOptionRow calls.
-            return [
-                { storageKey: 'guiBgColor', cssVariable: '--otk-gui-bg-color', defaultValue: '#181818', inputType: 'color', idSuffix: 'gui-bg' },
-                { storageKey: 'titleTextColor', cssVariable: '--otk-title-text-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'title-text' },
-                { storageKey: 'guiThreadListTitleColor', cssVariable: '--otk-gui-threadlist-title-color', defaultValue: '#e0e0e0', inputType: 'color', idSuffix: 'threadlist-title' },
-                { storageKey: 'guiThreadListTimeColor', cssVariable: '--otk-gui-threadlist-time-color', defaultValue: '#FFD700', inputType: 'color', idSuffix: 'threadlist-time' },
-                { storageKey: 'actualStatsTextColor', cssVariable: '--otk-stats-text-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'actual-stats-text' },
-                { storageKey: 'statsDashColor', cssVariable: '--otk-stats-dash-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'stats-dash' },
-                { storageKey: 'backgroundUpdatesStatsTextColor', cssVariable: '--otk-background-updates-stats-text-color', defaultValue: '#FFD700', inputType: 'color', idSuffix: 'background-updates-stats-text' },
-                { storageKey: 'viewerBgColor', cssVariable: '--otk-viewer-bg-color', defaultValue: '#ffd1a4', inputType: 'color', idSuffix: 'viewer-bg' },
-                { storageKey: 'guiBottomBorderColor', cssVariable: '--otk-gui-bottom-border-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'gui-bottom-border' },
-                // Messages (Odds) - Corresponds to Depth 0, 2, 4...
-                { storageKey: 'msgDepthOddContentFontSize', cssVariable: '--otk-msg-depth-odd-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-odd-content-fontsize'},
-                { storageKey: 'msgDepthOddBgColor', cssVariable: '--otk-msg-depth-odd-bg-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'msg-depth-odd-bg' },
-                { storageKey: 'msgDepthOddTextColor', cssVariable: '--otk-msg-depth-odd-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-odd-text' },
-                { storageKey: 'msgDepthOddHeaderTextColor', cssVariable: '--otk-msg-depth-odd-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-odd-header-text' },
-                { storageKey: 'viewerHeaderBorderColorOdd', cssVariable: '--otk-viewer-header-border-color-odd', defaultValue: '#000000', inputType: 'color', idSuffix: 'viewer-header-border-odd' },
-                // Messages (Evens) - Corresponds to Depth 1, 3, 5...
-                { storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize'},
-                { storageKey: 'msgDepthEvenBgColor', cssVariable: '--otk-msg-depth-even-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'msg-depth-even-bg' },
-                { storageKey: 'msgDepthEvenTextColor', cssVariable: '--otk-msg-depth-even-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-even-text' },
-                { storageKey: 'msgDepthEvenHeaderTextColor', cssVariable: '--otk-msg-depth-even-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-even-header-text' },
-                { storageKey: 'ownMsgBgColorOdd', cssVariable: '--otk-own-msg-bg-color-odd', defaultValue: '#d1e7ff', inputType: 'color', idSuffix: 'own-msg-bg-odd' },
-                { storageKey: 'ownMsgBgColorEven', cssVariable: '--otk-own-msg-bg-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-bg-even' },
-                { storageKey: 'cogIconColor', cssVariable: '--otk-cog-icon-color', defaultValue: '#FFD700', inputType: 'color', idSuffix: 'cog-icon' },
-                { storageKey: 'disableBgFontColor', cssVariable: '--otk-disable-bg-font-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'disable-bg-font' },
-                { storageKey: 'countdownBgColor', cssVariable: '--otk-countdown-bg-color', defaultValue: '#181818', inputType: 'color', idSuffix: 'countdown-bg' },
-                { storageKey: 'countdownLabelTextColor', cssVariable: '--otk-countdown-label-text-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'countdown-label-text' },
-                { storageKey: 'countdownTimerTextColor', cssVariable: '--otk-countdown-timer-text-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'countdown-timer-text' },
-                { storageKey: 'separatorColor', cssVariable: '--otk-separator-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'separator' },
-                { storageKey: 'optionsTextColor', cssVariable: '--otk-options-text-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'options-text' },
-                { storageKey: 'newMessagesDividerColor', cssVariable: '--otk-new-messages-divider-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'new-msg-divider' },
-                { storageKey: 'newMessagesFontColor', cssVariable: '--otk-new-messages-font-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'new-msg-font' },
-                { storageKey: 'newMessagesFontSize', cssVariable: '--otk-new-messages-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'new-msg-font-size', requiresRerender: false },
-                { storageKey: 'blockedContentFontColor', cssVariable: '--otk-blocked-content-font-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'blocked-content-font' },
-
-                // Pin Highlight Colors
-                { storageKey: 'pinHighlightBgColor', cssVariable: '--otk-pin-highlight-bg-color', defaultValue: '#ffd1a4', inputType: 'color', idSuffix: 'pin-bg' },
-                { storageKey: 'pinHighlightBorderColor', cssVariable: '--otk-pin-highlight-border-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'pin-border' },
-
-                // '+' Icon Background
-                { storageKey: 'plusIconBgColor', cssVariable: '--otk-plus-icon-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'plus-icon-bg-color' },
-                { storageKey: 'plusIconColor', cssVariable: '--otk-plus-icon-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'plus-icon-color' },
-
-                // GUI Button Colours
-                { storageKey: 'guiButtonBgColor', cssVariable: '--otk-button-bg-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'gui-button-bg' },
-                { storageKey: 'guiButtonTextColor', cssVariable: '--otk-button-text-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'gui-button-text' },
-                { storageKey: 'guiButtonBorderColor', cssVariable: '--otk-button-border-color', defaultValue: '#777777', inputType: 'color', idSuffix: 'gui-button-border' },
-                { storageKey: 'guiButtonHoverBgColor', cssVariable: '--otk-button-hover-bg-color', defaultValue: '#666666', inputType: 'color', idSuffix: 'gui-button-hover-bg' },
-                { storageKey: 'guiButtonActiveBgColor', cssVariable: '--otk-button-active-bg-color', defaultValue: '#444444', inputType: 'color', idSuffix: 'gui-button-active-bg' },
-
-                // Loading Screen Colours
-                { storageKey: 'loadingOverlayBaseHexColor', cssVariable: '--otk-loading-overlay-base-hex-color', defaultValue: '#000000', inputType: 'color', idSuffix: 'loading-overlay-base-hex' },
-                { storageKey: 'loadingOverlayOpacity', cssVariable: '--otk-loading-overlay-opacity', defaultValue: '1', inputType: 'number', unit: null, min:0.0, max:1.0, step:0.05, idSuffix: 'loading-overlay-opacity' },
-                { storageKey: 'loadingTextColor', cssVariable: '--otk-loading-text-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'loading-text' },
-                { storageKey: 'loadingProgressBarBgColor', cssVariable: '--otk-loading-progress-bar-bg-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'loading-progress-bg' },
-                { storageKey: 'loadingProgressBarFillColor', cssVariable: '--otk-loading-progress-bar-fill-color', defaultValue: '#4CAF50', inputType: 'color', idSuffix: 'loading-progress-fill' },
-                { storageKey: 'loadingProgressBarTextColor', cssVariable: '--otk-loading-progress-bar-text-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'loading-progress-text' },
-
-                // Clock Colours
-                { storageKey: 'clockBgColor', cssVariable: '--otk-clock-bg-color', defaultValue: '#181818', inputType: 'color', idSuffix: 'clock-bg' },
-                { storageKey: 'clockTextColor', cssVariable: '--otk-clock-text-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'clock-text' },
-                { storageKey: 'clockBorderColor', cssVariable: '--otk-clock-border-color', defaultValue: '#181818', inputType: 'color', idSuffix: 'clock-border' },
-                { storageKey: 'clockSearchBgColor', cssVariable: '--otk-clock-search-bg-color', defaultValue: '#333', inputType: 'color', idSuffix: 'clock-search-bg' },
-                { storageKey: 'clockSearchTextColor', cssVariable: '--otk-clock-search-text-color', defaultValue: '#e6e6e6', inputType: 'color', idSuffix: 'clock-search-text' },
-
-                // QR Theming
-                { storageKey: 'qrBgColor', cssVariable: '--otk-qr-bg-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'qr-bg' },
-                { storageKey: 'qrBorderColor', cssVariable: '--otk-qr-border-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'qr-border' },
-                { storageKey: 'qrHeaderBgColor', cssVariable: '--otk-qr-header-bg-color', defaultValue: '#444444', inputType: 'color', idSuffix: 'qr-header-bg' },
-                { storageKey: 'qrHeaderTextColor', cssVariable: '--otk-qr-header-text-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'qr-header-text' },
-                { storageKey: 'qrTextareaBgColor', cssVariable: '--otk-qr-textarea-bg-color', defaultValue: '#222222', inputType: 'color', idSuffix: 'qr-textarea-bg' },
-                { storageKey: 'qrTextareaTextColor', cssVariable: '--otk-qr-textarea-text-color', defaultValue: '#eeeeee', inputType: 'color', idSuffix: 'qr-textarea-text' },
-
-                // Message Header Icon Colors
-                { storageKey: 'blockIconColorOdd', cssVariable: '--otk-block-icon-color-odd', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-odd' },
-                { storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' },
-                { storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' },
-                { storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' },
-                { storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'pin-icon-active' },
-                { storageKey: 'optionsMainBgColor', cssVariable: '--otk-options-main-bg-color', defaultValue: '#2c2c2c', inputType: 'color', idSuffix: 'options-main-bg' },
-                { storageKey: 'optionsAltBgColor', cssVariable: '--otk-options-alt-bg-color', defaultValue: '#383838', inputType: 'color', idSuffix: 'options-alt-bg' }
-            ];
-        }
-
         function resetAllThemeSettingsToDefault(promptUser = true) {
             if (promptUser && !confirm("Are you sure you want to reset all theme settings to their defaults?")) {
                 return;
@@ -8687,52 +8599,11 @@ function createSectionHeading(text) {
             // Clear the active theme settings from localStorage.
             localStorage.removeItem(THEME_SETTINGS_KEY);
 
-            const allOptionConfigs = getAllOptionConfigs();
+            // The default values are now implicitly handled by the initial CSS and the createThemeOptionRow function.
+            // To reset, we just need to re-apply the theme, which will pick up the defaults.
+            applyThemeSettings();
 
-            allOptionConfigs.forEach(opt => {
-                const defaultValue = opt.defaultValue;
-                // Set the CSS variable to the default value.
-                if (opt.cssVariable) {
-                    document.documentElement.style.setProperty(opt.cssVariable, defaultValue);
-                }
-
-                // Update the input fields in the options panel to reflect the default values.
-                const mainInput = document.getElementById(`otk-${opt.idSuffix}`);
-                const hexInput = opt.inputType === 'color' ? document.getElementById(`otk-${opt.idSuffix}-hex`) : null;
-
-                let displayValue = defaultValue;
-                if (opt.unit && displayValue.endsWith(opt.unit)) {
-                    displayValue = displayValue.replace(opt.unit, '');
-                }
-
-                if (mainInput) mainInput.value = displayValue;
-                if (hexInput) hexInput.value = displayValue;
-
-                if (opt.storageKey === 'cogIconColor') {
-                    const cogIcon = document.getElementById('otk-settings-cog');
-                    if (cogIcon) cogIcon.style.color = defaultValue;
-                }
-            });
-
-            const newBooleanSettings = [
-                { key: 'otkMsgDepthOddDisableHeaderUnderline', defaultValue: false, idSuffix: 'msg-depth-odd-disable-header-underline' },
-                { key: 'otkMsgDepthEvenDisableHeaderUnderline', defaultValue: true, idSuffix: 'msg-depth-even-disable-header-underline' },
-                { key: 'showOddMessageFilename', defaultValue: false, idSuffix: 'show-odd-filename'},
-                { key: 'showEvenMessageFilename', defaultValue: false, idSuffix: 'show-even-filename'}
-            ];
-            newBooleanSettings.forEach(opt => {
-                const checkbox = document.getElementById(`otk-${opt.idSuffix}-checkbox`);
-                if (checkbox) {
-                    checkbox.checked = opt.defaultValue;
-                }
-            });
-
-            // The applyThemeSettings() call is no longer needed here if called by the initiator.
-            // If called from the reset button, it should call it.
-            // Let's call it for the standalone reset case.
             if (promptUser) {
-                // No need to call applyThemeSettings() as we have manually set all the properties.
-                // Calling it might re-apply old settings from memory before a refresh.
                 forceViewerRerenderAfterThemeChange(); // Force a re-render if the viewer is open.
                 alert("All theme settings have been reset to their defaults.");
             }
@@ -9379,56 +9250,112 @@ function setupFilterWindow() {
     // --- Initial Actions / Main Execution ---
     function applyDefaultSettings() {
         const defaults = {
-            "otkTrackedKeywords": "otk",
-            "otkSuspendAfterInactiveMinutes": 30,
+            "otkTrackedKeywords": "otk, twitch, OTK & Company",
+            "otkBlockedKeywords": null,
+            "otkMinUpdateSeconds": null,
+            "otkMaxUpdateSeconds": null,
+            "otkSuspendAfterInactiveMinutes": 60,
             "otkMediaLoadMode": "source_first",
             "otkBackgroundUpdatesDisabled": false,
             "otkClockEnabled": true,
             "otkPipModeEnabled": true,
             "otkDebugModeEnabled": false,
+            "otkAutoLoadUpdates": false,
+            "otkSoundEnabled": true,
+            "otkSoundVolume": 1,
+            "otkSoundUrl": "https://image2url.com/images/1761413864075-c322b64b-2209-4074-b816-1f6e4a42b17a.mp3",
+            "otkFaviconEnabled": true,
+            "otkAutoScrollEnabled": true,
+            "otkWindowPosition": { "top": "153px", "left": "173px" },
+            "otkWindowSize": { "width": "1000px", "height": "650px" },
+            "otkViewerWindowPosition": { "top": "153px", "left": "173px" },
+            "otkViewerWindowSize": { "width": "1000px", "height": "650px" },
+            "otkQrWindowPosition": { "top": "153px", "left": "173px" },
+            "otkQrWindowSize": { "width": "300px", "height": "auto" },
+            "otkShowThreadUploader": true,
+            "otkShowThreadTime": true,
+            "otkShowThreadDate": true,
+            "otkRelativeTime": true,
+            "otk24HourTime": true,
+            "otkSortOrder": "desc",
+            "otkSortBy": "last_message",
+            "otkShowArchived": true,
+            "otkGroupThreads": true,
+            "otkShowThreadImages": true,
+            "otkEnableThreadExpansion": true,
+            "otkExpandAllThreads": false,
+            "otkShowThreadFilter": true,
+            "otkShowThreadControls": true,
+            "otkShowThreadHeader": true,
+            "otkShowThreadFooter": true,
+            "otkShowThreadStats": true,
+            "otkShowThreadBody": true,
+            "otkShowMessageControls": true,
+            "otkShowMessageHeader": true,
+            "otkShowMessageBody": true,
+            "otkShowMessageFooter": true,
+            "otkShowMessageStats": true,
+            "otkShowMessageImages": true,
+            "otkShowMessageVideos": true,
+            "otkShowMessageReplies": true,
+            "otkShowMessageQuotes": true,
             "otkThemeSettings": {
-                "guiBackgroundImageUrl": "(Local file used)",
-                "countdownLabelTextColor": "#ffffff",
-                "pipBackgroundColor": "#1a1a1a",
-                "viewerBackgroundImageUrl": "",
-                "guiBgRepeat": "repeat",
-                "guiBgSize": "cover",
-                "viewerBgRepeat": "repeat-x",
-                "viewerBgSize": "contain",
-                "clockCogIconColor": "#ff8040",
-                "clockCogColor": "#FFD700",
-                "cogIconColor": "#FFD700",
-                "guiThreadListTimeColor": "#ffffff",
-                "msgDepth0TextColor": null,
-                "msgDepth0HeaderTextColor": null,
-                "viewerHeaderBorderColor": null,
-                "otkThreadTimePosition": "Before Title",
-                "otkThreadTimeDividerEnabled": true,
-                "otkThreadTimeDividerSymbol": "|",
-                "separatorColor": "#ff0505",
-                "otkThreadTimeDividerColor": "#ff8040",
-                "otkMaxUpdateSeconds": "4",
-                "otkThreadTimeBracketStyle": "none",
-                "otkNewMessagesSeparatorAlignment": "Left",
-                "blockedContentFontColor": "#a60c0c",
-                "msgDepth1BgColor": null,
-                "msgDepth2plusBgColor": null,
-                "guiThreadBoxOutlineColor": "#919191",
-                "viewerMessageOutlineColor": "#ff8040",
-                "viewerThreadBoxOutlineColor": "#919191",
-                "plusIconBgColor": "#ffffff",
-                "otkThreadTitleAnimationSpeed": "1.5",
-                "qrBgColor": "#ffd1a4",
-                "qrBorderColor": "#ff8000",
-                "qrTextareaBgColor": "#ffffff",
-                "qrTextareaTextColor": "#000000",
-                "pinHighlightBgColor": "#ff8040",
-                "qrHeaderBgColor": "#000000",
-                "loadingProgressBarFillColor": "#ff8000",
-                "guiButtonActiveBgColor": "#ff8040",
-                "ownMsgBgColorOdd": "#fce573",
-                "ownMsgBgColorEven": "#fce573",
-                "otkThreadTitleAnimationDirection": "Down"
+                "guiBackgroundImageUrl": "https://image2url.com/images/1761518576649-68bda51c-b457-405f-8e2c-a0cd7bcaa33f.jpeg",
+                "guiBackgroundColor": "#0d0d0d",
+                "guiTextColor": "#ffffff",
+                "guiAccentColor": "#ff8040",
+                "guiFont": "Arial, sans-serif",
+                "guiFontSize": "14px",
+                "guiLinkColor": "#ff8040",
+                "guiBorderColor": "#ff8040",
+                "guiBorderWidth": "1px",
+                "guiBorderStyle": "solid",
+                "guiBorderRadius": "5px",
+                "guiBoxShadow": "0 0 10px rgba(0, 0, 0, 0.5)",
+                "guiOpacity": "0.95",
+                "viewerBackgroundColor": "#0d0d0d",
+                "viewerTextColor": "#ffffff",
+                "viewerAccentColor": "#ff8040",
+                "viewerFont": "Arial, sans-serif",
+                "viewerFontSize": "14px",
+                "viewerLinkColor": "#ff8040",
+                "viewerBorderColor": "#ff8040",
+                "viewerBorderWidth": "1px",
+                "viewerBorderStyle": "solid",
+                "viewerBorderRadius": "5px",
+                "viewerBoxShadow": "0 0 10px rgba(0, 0, 0, 0.5)",
+                "viewerOpacity": "0.95",
+                "qrBackgroundColor": "#0d0d0d",
+                "qrTextColor": "#ffffff",
+                "qrAccentColor": "#ff8040",
+                "qrFont": "Arial, sans-serif",
+                "qrFontSize": "14px",
+                "qrLinkColor": "#ff8040",
+                "qrBorderColor": "#ff8040",
+                "qrBorderWidth": "1px",
+                "qrBorderStyle": "solid",
+                "qrBorderRadius": "5px",
+                "qrBoxShadow": "0 0 10px rgba(0, 0, 0, 0.5)",
+                "qrOpacity": "0.95",
+                "msgOddBackgroundColor": "#1a1a1a",
+                "msgEvenBackgroundColor": "#2a2a2a",
+                "msgOddTextColor": "#ffffff",
+                "msgEvenTextColor": "#ffffff",
+                "msgOddHeaderColor": "#ff8040",
+                "msgEvenHeaderColor": "#ff8040",
+                "msgOddNameColor": "#ff8040",
+                "msgEvenNameColor": "#ff8040",
+                "msgOddTimeColor": "#ff8040",
+                "msgEvenTimeColor": "#ff8040",
+                "msgOddDateColor": "#ff8040",
+                "msgEvenDateColor": "#ff8040",
+                "msgOddIdColor": "#ff8040",
+                "msgEvenIdColor": "#ff8040",
+                "loadingScreenBackgroundColor": "#0d0d0d",
+                "loadingScreenTextColor": "#ffffff",
+                "loadingScreenAccentColor": "#ff8040",
+                "loadingScreenFont": "Arial, sans-serif",
+                "loadingScreenFontSize": "14px"
             },
             "otkThreadTitleColors": [
                 "#e6194B", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#bcf60c", "#008080", "#e6beff", "#912499", "#800000", "#aaffc3", "#cbcb25", "#000075", "#ffffff"
@@ -9865,102 +9792,125 @@ function setupFilterWindow() {
     panel.innerHTML = ''; // Clear existing content
 
     const orderedKeysConfig = [
-        // GUI
-        { section: "GUI", storageKey: 'titleTextColor', label: "Title Font Colour" },
-        { section: "GUI", storageKey: 'guiBgColor', label: "Background Colour" },
-        { section: "GUI", storageKey: 'guiBackgroundImageUrl', label: 'Background Image URL' },
-        { section: "GUI", storageKey: 'guiBgSize', label: 'Background Image Size' },
-        { section: "GUI", storageKey: 'guiBgRepeat', label: 'Background Image Repeat Mode' },
-        { section: "GUI", storageKey: 'guiBgPosition', label: 'Background Image Position' },
-        { section: "GUI", storageKey: 'guiThreadBoxOutlineColor', label: "Thread Title Box Outline Colour" },
-        { section: "GUI", storageKey: 'guiThreadListTitleColor', label: "Thread Titles Text" },
-        { section: "GUI", storageKey: 'guiThreadListTimeColor', label: "Thread Times Text" },
-        { section: "GUI", storageKey: 'otkThreadTimePosition', label: 'Thread Time Position' },
-        { section: "GUI", storageKey: 'otkThreadTimeDividerSymbol', label: "Thread Title/Thread Clock Divider" },
-        { section: "GUI", storageKey: 'otkThreadTimeDividerColor', label: "Thread Title/Thread Time Divider Colour" },
-        { section: "GUI", storageKey: 'otkThreadTimeBracketStyle', label: 'Thread Time Bracket Style' },
-        { section: "GUI", storageKey: 'otkThreadTimeBracketColor', label: "Thread Time Bracket Colour" },
-        { section: "GUI", storageKey: 'otkThreadTitleAnimationSpeed', label: "Thread Title Animation Speed" },
-        { section: "GUI", storageKey: 'otkThreadTitleAnimationDirection', label: 'Thread Title Animation Direction' },
-        { section: "GUI", storageKey: 'actualStatsTextColor', label: "Thread(s) Stats Font Colour" },
-        { section: "GUI", storageKey: 'statsDashColor', label: "Thread(s) Stats Bullet point Colour" },
-        { section: "GUI", storageKey: 'backgroundUpdatesStatsTextColor', label: "Background Updates Stats Font Colour" },
-        { section: "GUI", storageKey: 'cogIconColor', label: "Options Icon Colour" },
-        { section: "GUI", storageKey: 'countdownBgColor', label: "Background Updates Background Colour" },
-        { section: "GUI", storageKey: 'countdownLabelTextColor', label: "Background Updates Main Font Colour" },
-        { section: "GUI", storageKey: 'countdownTimerTextColor', label: "Background Updates Timer Font Colour" },
-        { section: "GUI", storageKey: 'clockBgColor', label: "Clock(s) Background Colour" },
-        { section: "GUI", storageKey: 'clockTextColor', label: "Clock(s) Font Colour" },
-        { section: "GUI", storageKey: 'clockBorderColor', label: "Clock(s) Border Colour" },
-        { section: "GUI", storageKey: 'clockDividerColor', label: "Clock Divider Colour" },
-        { section: "GUI", storageKey: 'clockSearchBgColor', label: "Clock Search Background Colour" },
-        { section: "GUI", storageKey: 'clockSearchTextColor', label: "Clock Search Font Colour" },
-        { section: "GUI", storageKey: 'guiButtonBgColor', label: "Button Background Colour" },
-        { section: "GUI", storageKey: 'guiButtonHoverBgColor', label: "Button Mouseover Background Colour" },
-        { section: "GUI", storageKey: 'guiButtonActiveBgColor', label: "Button Clicked Background Colour" },
-        { section: "GUI", storageKey: 'guiButtonTextColor', label: "Button Font Colour" },
-        { section: "GUI", storageKey: 'guiButtonBorderColor', label: "Button Border Colour" },
-        { section: "GUI", storageKey: 'guiBottomBorderColor', label: "Bottom Border" },
-        // Viewer
-        { section: "Viewer", storageKey: 'viewerBgColor', label: "Viewer Background Colour" },
-        { section: "Viewer", storageKey: 'viewerBackgroundImageUrl', label: 'Viewer Background Image' },
-        { section: "Viewer", storageKey: 'viewerBgSize', label: 'Viewer Background Image Size' },
-        { section: "Viewer", storageKey: 'viewerBgRepeat', label: 'Viewer Background Image Repeat Mode' },
-        { section: "Viewer", storageKey: 'viewerBgPosition', label: 'Viewer Background Image Position' },
-        { section: "Viewer", storageKey: 'viewerThreadBoxOutlineColor', label: "Thread Title Box Outline Colour" },
-        { section: "Viewer", storageKey: 'otkShowNewMessagesElements', label: 'Show New Messages Elements' },
-        { section: "Viewer", storageKey: 'otkNewMessagesSeparatorAlignment', label: 'New Messages Indicator Position' },
-        { section: "Viewer", storageKey: 'newMessagesDividerColor', label: "New Messages Indicator Divider Colour" },
-        { section: "Viewer", storageKey: 'newMessagesFontSize', label: "New Messages Indicator Font Size" },
-        { section: "Viewer", storageKey: 'newMessagesFontColor', label: "New Messages Indicator Font Colour" },
-        { section: "Viewer", storageKey: 'blockedContentFontColor', label: "Blocked Content Indicator Font Colour" },
-        { section: "Viewer", storageKey: 'pinHighlightBgColor', label: "Pinned Message Highlight Colour" },
-        { section: "Viewer", storageKey: 'pinHighlightBorderColor', label: "Pinned Message Outline Colour" },
-        { section: "Viewer", storageKey: 'plusIconBgColor', label: "Next Message Icon Background Colour" },
-        { section: "Viewer", storageKey: 'plusIconColor', label: "Next Message Icon Colour" },
-        // PiP Mode
-        { section: "PiP Mode", storageKey: 'pipBackgroundColor', label: "PiP Mode Background Colour" },
-        { section: "PiP Mode", storageKey: 'pipBackgroundImageUrl', label: 'Pip Mode Background Image URL' },
-        { section: "PiP Mode", storageKey: 'pipBgSize', label: 'PiP Mode Background Image Size' },
-        { section: "PiP Mode", storageKey: 'pipBgRepeat', label: 'PiP Mode Background Repeat Mode' },
-        { section: "PiP Mode", storageKey: 'pipBgPosition', label: 'PiP Mode Background Position' },
-        // Quick Reply Window
-        { section: "Quick Reply Window", storageKey: 'qrHeaderBgColor', label: "Header Background Colour" },
-        { section: "Quick Reply Window", storageKey: 'qrHeaderTextColor', label: "Header Font Colour" },
-        { section: "Quick Reply Window", storageKey: 'qrBgColor', label: "Background Colour" },
-        { section: "Quick Reply Window", storageKey: 'qrBorderColor', label: "Border Colour" },
-        { section: "Quick Reply Window", storageKey: 'qrTextareaBgColor', label: "Text Area Background Colour" },
-        { section: "Quick Reply Window", storageKey: 'qrTextareaTextColor', label: "Text Area Font Colour" },
-        // Messages (Odds)
-        { section: "Messages (Odds)", storageKey: 'msgDepthOddHeaderTextColor', label: "Header Font Colour" },
-        { section: "Messages (Odds)", storageKey: 'viewerHeaderBorderColorOdd', label: "Header Underline Colour" },
-        { section: "Messages (Odds)", storageKey: 'msgDepthOddContentFontSize', label: "Font Size (px)" },
-        { section: "Messages (Odds)", storageKey: 'msgDepthOddBgColor', label: "Background Colour" },
-        { section: "Messages (Odds)", storageKey: 'msgDepthOddTextColor', label: "Content Font Colour" },
-        { section: "Messages (Odds)", storageKey: 'ownMsgBgColorOdd', label: "Own Post Background Colour" },
-        { section: "Messages (Odds)", storageKey: 'blockIconColorOdd', label: "Filter Icon" },
-        { section: "Messages (Odds)", storageKey: 'pinIconColorOdd', label: "Pin Icon" },
-        { section: "Messages (Odds)", storageKey: 'pinIconColorActive', label: "Pin Icon (Active)" },
+        // General Settings
+        { section: "General Settings", storageKey: OTK_TRACKED_KEYWORDS_KEY, label: "Tracked Keyword(s)" },
+        { section: "General Settings", storageKey: OTK_BLOCKED_KEYWORDS_KEY, label: "Blocked Keyword(s)" },
+        { section: "Viewer", storageKey: 'otkMessageLimitEnabled', label: "Enable Limiting", isTheme: true },
+        { section: "Viewer", storageKey: 'otkMessageLimitValue', label: "Message Number Limiting", isTheme: true },
+        // Image Blur
+        { section: "Image Blur", storageKey: IMAGE_BLUR_AMOUNT_KEY, label: "Blur Amount (%)" },
         // Messages (Evens)
-        { section: "Messages (Evens)", storageKey: 'msgDepthEvenHeaderTextColor', label: "Header Font Colour" },
-        { section: "Messages (Evens)", storageKey: 'viewerHeaderBorderColorEven', label: "Header Underline Colour" },
-        { section: "Messages (Evens)", storageKey: 'msgDepthEvenContentFontSize', label: "Font Size (px)" },
-        { section: "Messages (Evens)", storageKey: 'msgDepthEvenBgColor', label: "Background Colour" },
-        { section: "Messages (Evens)", storageKey: 'msgDepthEvenTextColor', label: "Content Font Colour" },
-        { section: "Messages (Evens)", storageKey: 'ownMsgBgColorEven', label: "Own Post Background Colour" },
-        { section: "Messages (Evens)", storageKey: 'blockIconColorEven', label: "Filter Icon" },
-        { section: "Messages (Evens)", storageKey: 'pinIconColorEven', label: "Pin Icon" },
+        { section: "Messages (Evens)", storageKey: 'pinIconColorActive', label: "Pin Icon (Active)", isTheme: true },
+        { section: "General Settings", storageKey: 'otkMinUpdateSeconds', label: "Minimum Time Between Updates" },
+        { section: "General Settings", storageKey: 'otkMaxUpdateSeconds', label: "Maximum Time Between Updates" },
+        { section: "General Settings", storageKey: 'otkSuspendAfterInactiveMinutes', label: "Suspend After Inactivity" },
+        { section: "General Settings", storageKey: 'otkMediaLoadMode', label: "Attached Media Load Mode" },
+        { section: "General Settings", storageKey: BACKGROUND_UPDATES_DISABLED_KEY, label: "Enable Background Updates" },
+        { section: "General Settings", storageKey: 'otkAutoLoadUpdates', label: "Automatically Load Background Updates" },
+        { section: "General Settings", storageKey: 'otkClockEnabled', label: "Enable Clock" },
+        { section: "General Settings", storageKey: 'otkPipModeEnabled', label: "Enable Picture-in-Picture Mode" },
+        { section: "General Settings", storageKey: DEBUG_MODE_KEY, label: "Enable Console Debugging" },
+        // GUI
+        { section: "GUI", storageKey: 'titleTextColor', label: "Title Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiBgColor', label: "Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiBackgroundImageUrl', label: 'Background Image URL', isTheme: true },
+        { section: "GUI", storageKey: 'guiBgSize', label: 'Background Image Size', isTheme: true },
+        { section: "GUI", storageKey: 'guiBgRepeat', label: 'Background Image Repeat Mode', isTheme: true },
+        { section: "GUI", storageKey: 'guiBgPosition', label: 'Background Image Position', isTheme: true },
+        { section: "GUI", storageKey: 'guiThreadBoxOutlineColor', label: "Thread Title Box Outline Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiThreadListTitleColor', label: "Thread Titles Text", isTheme: true },
+        { section: "GUI", storageKey: 'guiThreadListTimeColor', label: "Thread Times Text", isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTimePosition', label: 'Thread Time Position', isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTimeDividerSymbol', label: "Thread Title/Thread Clock Divider", isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTimeDividerColor', label: "Thread Title/Thread Time Divider Colour", isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTimeBracketStyle', label: 'Thread Time Bracket Style', isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTimeBracketColor', label: "Thread Time Bracket Colour", isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTitleAnimationSpeed', label: "Thread Title Animation Speed", isTheme: true },
+        { section: "GUI", storageKey: 'otkThreadTitleAnimationDirection', label: 'Thread Title Animation Direction', isTheme: true },
+        { section: "GUI", storageKey: 'actualStatsTextColor', label: "Thread(s) Stats Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'statsDashColor', label: "Thread(s) Stats Bullet point Colour", isTheme: true },
+        { section: "GUI", storageKey: 'backgroundUpdatesStatsTextColor', label: "Background Updates Stats Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'cogIconColor', label: "Options Icon Colour", isTheme: true },
+        { section: "GUI", storageKey: 'countdownBgColor', label: "Background Updates Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'countdownLabelTextColor', label: "Background Updates Main Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'countdownTimerTextColor', label: "Background Updates Timer Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockBgColor', label: "Clock(s) Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockTextColor', label: "Clock(s) Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockBorderColor', label: "Clock(s) Border Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockDividerColor', label: "Clock Divider Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockSearchBgColor', label: "Clock Search Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'clockSearchTextColor', label: "Clock Search Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiButtonBgColor', label: "Button Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiButtonHoverBgColor', label: "Button Mouseover Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiButtonActiveBgColor', label: "Button Clicked Background Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiButtonTextColor', label: "Button Font Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiButtonBorderColor', label: "Button Border Colour", isTheme: true },
+        { section: "GUI", storageKey: 'guiBottomBorderColor', label: "Bottom Border", isTheme: true },
+        // Viewer
+        { section: "Viewer", storageKey: 'viewerBgColor', label: "Viewer Background Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'viewerBackgroundImageUrl', label: 'Viewer Background Image', isTheme: true },
+        { section: "Viewer", storageKey: 'viewerBgSize', label: 'Viewer Background Image Size', isTheme: true },
+        { section: "Viewer", storageKey: 'viewerBgRepeat', label: 'Viewer Background Image Repeat Mode', isTheme: true },
+        { section: "Viewer", storageKey: 'viewerBgPosition', label: 'Viewer Background Image Position', isTheme: true },
+        { section: "Viewer", storageKey: 'viewerThreadBoxOutlineColor', label: "Thread Title Box Outline Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'otkShowNewMessagesElements', label: 'Show New Messages Elements', isTheme: true },
+        { section: "Viewer", storageKey: 'otkNewMessagesSeparatorAlignment', label: 'New Messages Indicator Position', isTheme: true },
+        { section: "Viewer", storageKey: 'newMessagesDividerColor', label: "New Messages Indicator Divider Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'newMessagesFontSize', label: "New Messages Indicator Font Size", isTheme: true },
+        { section: "Viewer", storageKey: 'newMessagesFontColor', label: "New Messages Indicator Font Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'blockedContentFontColor', label: "Blocked Content Indicator Font Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'pinHighlightBgColor', label: "Pinned Message Highlight Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'pinHighlightBorderColor', label: "Pinned Message Outline Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'plusIconBgColor', label: "Next Message Icon Background Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'plusIconColor', label: "Next Message Icon Colour", isTheme: true },
+        { section: "Viewer", storageKey: 'otkMessageLimitEnabled', label: "Enable Limiting", isTheme: true },
+        { section: "Viewer", storageKey: 'otkMessageLimitValue', label: "Message Number Limiting", isTheme: true },
+        // Image Blur
+        { section: "Image Blur", storageKey: IMAGE_BLUR_AMOUNT_KEY, label: "Blur Amount (%)" },
+        // PiP Mode
+        { section: "PiP Mode", storageKey: 'pipBackgroundColor', label: "PiP Mode Background Colour", isTheme: true },
+        { section: "PiP Mode", storageKey: 'pipBackgroundImageUrl', label: 'Pip Mode Background Image URL', isTheme: true },
+        { section: "PiP Mode", storageKey: 'pipBgSize', label: 'PiP Mode Background Image Size', isTheme: true },
+        { section: "PiP Mode", storageKey: 'pipBgRepeat', label: 'PiP Mode Background Repeat Mode', isTheme: true },
+        { section: "PiP Mode", storageKey: 'pipBgPosition', label: 'PiP Mode Background Position', isTheme: true },
+        // Quick Reply Window
+        { section: "Quick Reply Window", storageKey: 'qrHeaderBgColor', label: "Header Background Colour", isTheme: true },
+        { section: "Quick Reply Window", storageKey: 'qrHeaderTextColor', label: "Header Font Colour", isTheme: true },
+        { section: "Quick Reply Window", storageKey: 'qrBgColor', label: "Background Colour", isTheme: true },
+        { section: "Quick Reply Window", storageKey: 'qrBorderColor', label: "Border Colour", isTheme: true },
+        { section: "Quick Reply Window", storageKey: 'qrTextareaBgColor', label: "Text Area Background Colour", isTheme: true },
+        { section: "Quick Reply Window", storageKey: 'qrTextareaTextColor', label: "Text Area Font Colour", isTheme: true },
+        // Messages (Odds)
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddHeaderTextColor', label: "Header Font Colour", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'viewerHeaderBorderColorOdd', label: "Header Underline Colour", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddContentFontSize', label: "Font Size (px)", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddBgColor', label: "Background Colour", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'msgDepthOddTextColor', label: "Content Font Colour", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'ownMsgBgColorOdd', label: "Own Post Background Colour", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'blockIconColorOdd', label: "Filter Icon", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'pinIconColorOdd', label: "Pin Icon", isTheme: true },
+        { section: "Messages (Odds)", storageKey: 'pinIconColorActive', label: "Pin Icon (Active)", isTheme: true },
+        // Messages (Evens)
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenHeaderTextColor', label: "Header Font Colour", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'viewerHeaderBorderColorEven', label: "Header Underline Colour", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenContentFontSize', label: "Font Size (px)", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenBgColor', label: "Background Colour", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'msgDepthEvenTextColor', label: "Content Font Colour", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'ownMsgBgColorEven', label: "Own Post Background Colour", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'blockIconColorEven', label: "Filter Icon", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'pinIconColorEven', label: "Pin Icon", isTheme: true },
+        { section: "Messages (Evens)", storageKey: 'pinIconColorActive', label: "Pin Icon (Active)", isTheme: true },
         // Options Panel
-        { section: "Options Panel", storageKey: 'optionsTextColor', label: "Panel Text" },
-        { section: "Options Panel", storageKey: 'optionsMainBgColor', label: "Main Background Colour" },
-        { section: "Options Panel", storageKey: 'optionsAltBgColor', label: "Alternate Background Colour" },
+        { section: "Options Panel", storageKey: 'optionsTextColor', label: "Panel Text", isTheme: true },
+        { section: "Options Panel", storageKey: 'optionsMainBgColor', label: "Main Background Colour", isTheme: true },
+        { section: "Options Panel", storageKey: 'optionsAltBgColor', label: "Alternate Background Colour", isTheme: true },
         // Loading Screen
-        { section: "Loading Screen", storageKey: 'loadingOverlayBaseHexColor', label: "Overlay Background Colour" },
-        { section: "Loading Screen", storageKey: 'loadingOverlayOpacity', label: "Overlay Opacity" },
-        { section: "Loading Screen", storageKey: 'loadingTextColor', label: "Font Colour" },
-        { section: "Loading Screen", storageKey: 'loadingProgressBarBgColor', label: "Progress Bar Background colour" },
-        { section: "Loading Screen", storageKey: 'loadingProgressBarFillColor', label: "Progress Bar Fill Colour" },
-        { section: "Loading Screen", storageKey: 'loadingProgressBarTextColor', label: "Progress Bar Font Colour" },
+        { section: "Loading Screen", storageKey: 'loadingOverlayBaseHexColor', label: "Overlay Background Colour", isTheme: true },
+        { section: "Loading Screen", storageKey: 'loadingOverlayOpacity', label: "Overlay Opacity", isTheme: true },
+        { section: "Loading Screen", storageKey: 'loadingTextColor', label: "Font Colour", isTheme: true },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarBgColor', label: "Progress Bar Background colour", isTheme: true },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarFillColor', label: "Progress Bar Fill Colour", isTheme: true },
+        { section: "Loading Screen", storageKey: 'loadingProgressBarTextColor', label: "Progress Bar Font Colour", isTheme: true },
     ];
 
     // --- Dynamic Profiles Section ---
@@ -10103,26 +10053,20 @@ function setupFilterWindow() {
         if (!profileName) return;
 
         const allSettings = {};
-        const keysToExport = [
-            OTK_TRACKED_KEYWORDS_KEY, OTK_BLOCKED_KEYWORDS_KEY, 'otkMinUpdateSeconds',
-            'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
-            BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
-            'otkPipModeEnabled', DEBUG_MODE_KEY, THEME_SETTINGS_KEY, THREAD_TITLE_COLORS_KEY,
-            IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
-            // Begin missing keys
-            FILTER_RULES_V2_KEY,
-            PINNED_MESSAGE_ID_KEY,
-            BLURRED_IMAGES_KEY,
-            BLOCKED_THREADS_KEY,
-            UNREAD_MESSAGE_IDS_KEY,
-            'otkCollapsibleStates',
-            VIEWER_OPEN_KEY
-            // End missing keys
-        ];
+        
+        // Use orderedKeysConfig to determine which keys to save
+        const keysToExport = [...new Set(orderedKeysConfig.map(config => config.storageKey))];
+
+        // Also include the theme settings object itself
+        if (!keysToExport.includes(THEME_SETTINGS_KEY)) {
+            keysToExport.push(THEME_SETTINGS_KEY);
+        }
 
         keysToExport.forEach(key => {
             let value = localStorage.getItem(key);
-            if (value !== null) allSettings[key] = value;
+            if (value !== null) {
+                allSettings[key] = value;
+            }
         });
 
         let profiles = await GM.getValue('otkSettingsProfiles', {});
@@ -10151,7 +10095,7 @@ function setupFilterWindow() {
         const allLocalStorageKeys = Object.keys(localStorage);
 
         orderedKeysConfig.forEach(config => {
-            const { section, storageKey, label } = config;
+            const { section, storageKey, label, isTheme } = config;
 
             // Ensure the section exists in the output object
             if (!groupedSettings[section]) {
@@ -10159,21 +10103,25 @@ function setupFilterWindow() {
             }
 
             let value;
-            // Check if the key belongs to theme settings first
-            if (currentThemeSettings.hasOwnProperty(storageKey)) {
-                value = currentThemeSettings[storageKey];
-            } else if (allLocalStorageKeys.includes(storageKey)) {
-                value = localStorage.getItem(storageKey);
-                 // Try to parse if it's a JSON string, otherwise keep as string
-                try {
-                    const parsed = JSON.parse(value);
-                    value = parsed;
-                } catch (e) {
-                    // Not a valid JSON string, keep as is
+            if (isTheme) {
+                // Handle theme settings
+                if (currentThemeSettings.hasOwnProperty(storageKey)) {
+                    value = currentThemeSettings[storageKey];
+                } else {
+                    value = null; // Or a default value if you have one
                 }
             } else {
-                // Key not found in either, skip it or set to null
-                value = null;
+                // Handle general settings from localStorage
+                if (allLocalStorageKeys.includes(storageKey)) {
+                    value = localStorage.getItem(storageKey);
+                    try {
+                        value = JSON.parse(value);
+                    } catch (e) {
+                        // Not a JSON string, keep as is
+                    }
+                } else {
+                    value = null;
+                }
             }
 
             // Handle special cases like local file data URLs
@@ -10181,39 +10129,8 @@ function setupFilterWindow() {
                 value = '(Local file used)';
             }
 
-
             groupedSettings[section][label] = value;
         });
-
-        // Add non-UI settings that should still be exported
-        const nonUiKeysToExport = {
-            "Non-UI": [
-                OTK_TRACKED_KEYWORDS_KEY, OTK_BLOCKED_KEYWORDS_KEY, 'otkMinUpdateSeconds',
-                'otkMaxUpdateSeconds', 'otkSuspendAfterInactiveMinutes', 'otkMediaLoadMode',
-                BACKGROUND_UPDATES_DISABLED_KEY, 'otkAutoLoadUpdates', 'otkClockEnabled',
-                'otkPipModeEnabled', DEBUG_MODE_KEY, THREAD_TITLE_COLORS_KEY,
-                IMAGE_BLUR_AMOUNT_KEY, CLOCK_POSITION_KEY, COUNTDOWN_POSITION_KEY, 'otkClocks',
-                FILTER_RULES_V2_KEY, PINNED_MESSAGE_ID_KEY, BLURRED_IMAGES_KEY,
-                BLOCKED_THREADS_KEY, UNREAD_MESSAGE_IDS_KEY, 'otkCollapsibleStates', VIEWER_OPEN_KEY
-            ]
-        };
-
-        Object.keys(nonUiKeysToExport).forEach(section => {
-            if (!groupedSettings[section]) {
-                groupedSettings[section] = {};
-            }
-            nonUiKeysToExport[section].forEach(key => {
-                 let value = localStorage.getItem(key);
-                 if (value !== null) {
-                    try {
-                        groupedSettings[section][key] = JSON.parse(value);
-                    } catch (e) {
-                        groupedSettings[section][key] = value;
-                    }
-                 }
-            });
-        });
-
 
         const settingsString = JSON.stringify(groupedSettings, null, 2);
         const blob = new Blob([settingsString], { type: 'application/json' });
