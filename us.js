@@ -9404,7 +9404,7 @@ function setupFilterWindow() {
             "otkPipModeEnabled": true,
             "otkDebugModeEnabled": false,
             "otkThemeSettings": {
-                "guiBackgroundImageUrl": "(Local file used)",
+                "guiBackgroundImageUrl": "https://image2url.com/images/1761529475654-4c7bfbea-a390-4b5e-aef2-07667b77c17d.jpeg",
                 "countdownLabelTextColor": "#ffffff",
                 "pipBackgroundColor": "#1a1a1a",
                 "viewerBackgroundImageUrl": "",
