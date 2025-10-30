@@ -185,6 +185,7 @@ document.addEventListener("visibilitychange", () => {
     let renderedFullSizeImageHashes = new Set(); // Tracks image hashes already rendered full-size in current viewer session
     let mediaIntersectionObserver = null; // For lazy loading embeds
     let createdBlobUrls = new Set();
+    let videoBlobUrlCache = new Map();
     let blurredImages = new Set();
     let blockedThreads = new Set();
     let cachedNewMessages = [];
@@ -3094,6 +3095,12 @@ function _populateAttachmentDivWithMedia(
 
             const loadFromCache = () => {
                 if (message.attachment.localStoreId && otkMediaDB) {
+                    const filehash = message.attachment.filehash_db_key;
+                    if (videoBlobUrlCache.has(filehash)) {
+                        video.src = videoBlobUrlCache.get(filehash);
+                        return;
+                    }
+
                     const transaction = otkMediaDB.transaction(['mediaStore'], 'readonly');
                     const store = transaction.objectStore('mediaStore');
                     const request = store.get(message.attachment.localStoreId);
@@ -3102,6 +3109,7 @@ function _populateAttachmentDivWithMedia(
                         if (storedItem && storedItem.blob) {
                             const dataURL = URL.createObjectURL(storedItem.blob);
                             createdBlobUrls.add(dataURL);
+                            videoBlobUrlCache.set(filehash, dataURL);
                             video.src = dataURL;
                         }
                     };
@@ -5090,6 +5098,7 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
                 URL.revokeObjectURL(url);
             }
             createdBlobUrls.clear();
+            videoBlobUrlCache.clear();
             consoleLog('Viewer hidden state saved to localStorage.');
             // Reset viewer-specific counts and update stats to reflect totals
             viewerActiveImageCount = null;
