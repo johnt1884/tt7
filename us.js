@@ -138,6 +138,7 @@ document.addEventListener("visibilitychange", () => {
 
     // --- Global variables ---
     let threadTitleAnimationInterval = null;
+    let titleFlashingInterval = null;
     let threadTitleAnimationIndex = 0;
     let originalTitle = document.title;
     let otkViewer = null;
@@ -365,75 +366,116 @@ let unreadIds = new Set(JSON.parse(localStorage.getItem(UNREAD_MESSAGE_IDS_KEY) 
 
 
     // --- Media Embedding Helper Functions ---
-function createYouTubeEmbedElement(videoId, timestampStr) { // Removed isInlineEmbed parameter
+function createYouTubeEmbedElement(videoId, timestampStr) {
     let startSeconds = 0;
     if (timestampStr) {
-        // Try to parse timestamp like 1h2m3s or 2m3s or 3s or just 123 (YouTube takes raw seconds for ?t=)
-        // More robust parsing might be needed if youtube itself uses 1m30s format in its ?t= parameter.
-        // For now, assume ?t= is always seconds from the regex, or simple h/m/s format.
-        // Regex for youtubeMatch already captures 't' as a string of digits or h/m/s.
-        // Let's refine the parsing for h/m/s format.
-        if (timestampStr.match(/^\d+$/)) { // Pure seconds e.g. t=123
-             startSeconds = parseInt(timestampStr, 10) || 0;
-        } else { // Attempt to parse 1h2m3s format
+        if (timestampStr.match(/^\d+$/)) {
+            startSeconds = parseInt(timestampStr, 10) || 0;
+        } else {
             const timeParts = timestampStr.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?/);
             if (timeParts) {
                 const hours = parseInt(timeParts[1], 10) || 0;
                 const minutes = parseInt(timeParts[2], 10) || 0;
-                const seconds = parseInt(timeParts[3], 10) || 0; // Also handles case like "123" if 's' is optional and no h/m
-                if (hours > 0 || minutes > 0 || seconds > 0) { // ensure some part was parsed
-                     startSeconds = (hours * 3600) + (minutes * 60) + seconds;
-                } else if (timeParts[0] === timestampStr && !isNaN(parseInt(timestampStr,10)) ) { // fallback for plain numbers if regex above was too greedy with optional s
+                const seconds = parseInt(timeParts[3], 10) || 0;
+                if (hours > 0 || minutes > 0 || seconds > 0) {
+                    startSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                } else if (timeParts[0] === timestampStr && !isNaN(parseInt(timestampStr, 10))) {
                     startSeconds = parseInt(timestampStr, 10) || 0;
                 }
             }
         }
     }
 
-    const embedUrl = `https://www.youtube.com/embed/${videoId}` + (startSeconds > 0 ? `?start=${startSeconds}&autoplay=0` : '?autoplay=0'); // Added autoplay=0
-
-    // Create a wrapper for responsive iframe
     const wrapper = document.createElement('div');
-    wrapper.className = 'otk-youtube-embed-wrapper'; // Base class
-    // Add 'otk-embed-inline' if specific styling beyond size is still desired from CSS,
-    // or remove if all styling is now direct. For now, let's assume it might still be useful for other tweaks.
-    wrapper.classList.add('otk-embed-inline');
-
-    wrapper.style.position = 'relative'; // Needed for the absolutely positioned iframe
-    wrapper.style.overflow = 'hidden';   // Good practice for wrappers
-    wrapper.style.margin = '10px 0';     // Consistent vertical margin
-    wrapper.style.backgroundColor = '#000'; // Black background while loading
-
-    // Universal fixed size for all YouTube embeds
+    wrapper.className = 'otk-youtube-embed-wrapper otk-embed-inline';
+    wrapper.style.position = 'relative';
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.margin = '10px 0';
+    wrapper.style.backgroundColor = '#000';
     wrapper.style.width = '480px';
-    wrapper.style.height = '270px'; // 16:9 aspect ratio for 480px width
-    // No paddingBottom or conditional sizing logic needed anymore
+    wrapper.style.height = '270px';
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.top = '0';
-    iframe.style.left = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.setAttribute('frameborder', '0');
-    iframe.setAttribute('allowfullscreen', 'true');
-    iframe.setAttribute('allow', 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+    const createIframe = (embedUrl) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.top = '0';
+        iframe.style.left = '0';
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('allow', 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
 
-    const lazyLoadEnabled = (localStorage.getItem('otkLazyLoadYouTube') || 'true') === 'true';
-
-    if (lazyLoadEnabled) {
-        iframe.dataset.src = embedUrl;
-        if (mediaIntersectionObserver) {
-            mediaIntersectionObserver.observe(wrapper);
+        const lazyLoadEnabled = (localStorage.getItem('otkLazyLoadYouTube') || 'true') === 'true';
+        if (lazyLoadEnabled) {
+            iframe.dataset.src = embedUrl;
+            wrapper.innerHTML = '';
+            wrapper.appendChild(iframe);
+            if (mediaIntersectionObserver) {
+                mediaIntersectionObserver.observe(wrapper);
+            } else {
+                consoleWarn("[LazyLoad] mediaIntersectionObserver not ready. Iframe will load immediately:", iframe.dataset.src);
+                iframe.src = embedUrl;
+            }
         } else {
-            consoleWarn("[LazyLoad] mediaIntersectionObserver not ready. Iframe will load immediately:", iframe.dataset.src);
-            iframe.src = iframe.dataset.src;
+            iframe.src = embedUrl;
+            wrapper.innerHTML = '';
+            wrapper.appendChild(iframe);
         }
-    } else {
-        iframe.src = embedUrl;
-    }
+    };
 
-    wrapper.appendChild(iframe);
+    const useFallback = (reason) => {
+        consoleLog(`[YT Fallback] Using fallback for video ${videoId}. Reason: ${reason}`);
+        const fallbackFormat = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {}).youtubeFallbackProviderFormat || 'https://invidious.tiekoetter.com/embed/{videoId}';
+        let embedUrl = fallbackFormat.replace('{videoId}', videoId);
+        if (startSeconds > 0) {
+            embedUrl += (embedUrl.includes('?') ? '&' : '?') + `start=${startSeconds}`;
+        }
+        createIframe(embedUrl);
+    };
+
+    GM_xmlhttpRequest({
+        method: 'GET',
+        url: `https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v=${videoId}&format=json`,
+        onload: function(response) {
+            if (response.status === 200) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    if (data.title === "This video is unavailable.") {
+                        useFallback("oEmbed title indicates unavailable video.");
+                        return;
+                    }
+                } catch (e) {
+                    consoleWarn('[YT Fallback] Error parsing oEmbed response, assuming playable.', e);
+                }
+                let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+                if (startSeconds > 0) {
+                    embedUrl += `&start=${startSeconds}`;
+                }
+                createIframe(embedUrl);
+            } else {
+                useFallback(`oEmbed check failed with status ${response.status}`);
+            }
+        },
+        onerror: function(error) {
+            useFallback("oEmbed request failed.");
+        }
+    });
+
+    const placeholder = document.createElement('div');
+    placeholder.textContent = 'Loading YouTube embed...';
+    placeholder.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        background-color: #181818;
+        color: white;
+        font-size: 14px;
+    `;
+    wrapper.appendChild(placeholder);
+
     return wrapper;
 }
 
@@ -893,6 +935,54 @@ function createTweetEmbedElement(tweetId) {
             z-index: 2;
         `;
         otkGuiWrapper.appendChild(borderDiv);
+
+        // Add Viewer Navigation Arrows
+        const upArrow = document.createElement('div');
+        upArrow.id = 'otk-viewer-up-arrow';
+        upArrow.innerHTML = '&#9650;'; // Up arrow character
+        upArrow.style.cssText = `
+            position: absolute;
+            top: 95px; /* Below the GUI border */
+            right: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        upArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(upArrow);
+
+        const downArrow = document.createElement('div');
+        downArrow.id = 'otk-viewer-down-arrow';
+        downArrow.innerHTML = '&#9660;'; // Down arrow character
+        downArrow.style.cssText = `
+            position: absolute;
+            top: 130px; /* Below the up arrow */
+            right: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        downArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(downArrow);
+
         document.body.style.paddingTop = '89px';
         document.body.style.margin = '0';
         document.body.insertBefore(otkGuiWrapper, document.body.firstChild);
@@ -1030,6 +1120,17 @@ function createTweetEmbedElement(tweetId) {
         otkStatsDisplay.appendChild(totalMessagesStat);
         otkStatsDisplay.appendChild(localImagesStat);
         otkStatsDisplay.appendChild(localVideosStat);
+
+        const repliesStat = document.createElement('div');
+        repliesStat.id = 'otk-replies-stat';
+        repliesStat.style.cssText = `
+            display: flex;
+            align-items: center;
+            color: var(--otk-replies-stat-color, var(--otk-stats-text-color));
+            min-width: 200px;
+            white-space: nowrap;
+        `;
+        otkStatsDisplay.appendChild(repliesStat);
 
         statsWrapper.appendChild(titleContainer);
         statsWrapper.appendChild(otkStatsDisplay);
@@ -2954,8 +3055,15 @@ function _populateAttachmentDivWithMedia(
     effectiveDepthForStyling,
     filenameContainer
 ) {
-    const loadImageFromCache = (imgElement, isThumb) => {
+    const loadImageFromCache = (imgElement, isThumb, fallbackSrc = null) => {
         const storeId = isThumb ? message.attachment.localThumbStoreId : message.attachment.localStoreId;
+        const handleError = () => {
+            if (fallbackSrc) {
+                consoleLog(`[MediaLoad] Image cache miss/error for ${storeId}. Falling back to network: ${fallbackSrc}`);
+                imgElement.src = fallbackSrc;
+            }
+        };
+
         if (storeId && otkMediaDB) {
             const transaction = otkMediaDB.transaction(['mediaStore'], 'readonly');
             const store = transaction.objectStore('mediaStore');
@@ -2966,8 +3074,13 @@ function _populateAttachmentDivWithMedia(
                     const dataURL = URL.createObjectURL(storedItem.blob);
                     createdBlobUrls.add(dataURL);
                     imgElement.src = dataURL;
+                } else {
+                    handleError();
                 }
             };
+            request.onerror = handleError;
+        } else {
+            handleError();
         }
     };
 
@@ -2976,7 +3089,7 @@ function _populateAttachmentDivWithMedia(
     }
 
     const isArchived = !activeThreads.includes(message.originalThreadId);
-    const mediaLoadModeSetting = localStorage.getItem('otkMediaLoadMode') || 'source_first';
+    const mediaLoadModeSetting = localStorage.getItem('otkMediaLoadMode') || 'cache_only';
     const mediaLoadMode = isArchived ? 'cache_only' : mediaLoadModeSetting;
     if (isArchived && mediaLoadModeSetting !== 'cache_only') {
         consoleLog(`[MediaLoad] Message ${message.id} is in archived thread ${message.originalThreadId}. Forcing cache-only mode.`);
@@ -3021,7 +3134,9 @@ function _populateAttachmentDivWithMedia(
             setImageProperties = (mode) => {
                 img.dataset.mode = mode;
                 let isThumb = (mode === 'thumb');
-                const hasCache = isThumb ? message.attachment.localThumbStoreId : message.attachment.localStoreId;
+                const sourceUrl = isThumb
+                    ? `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}s.jpg`
+                    : `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}${message.attachment.ext}`;
 
                 if (isThumb) {
                     img.style.width = message.attachment.tn_w + 'px';
@@ -3041,18 +3156,29 @@ function _populateAttachmentDivWithMedia(
                 }
 
                 if (mediaLoadMode === 'cache_only') {
-                    if (hasCache) loadImageFromCache(img, isThumb);
-                    else img.src = '';
+                    loadImageFromCache(img, isThumb, sourceUrl);
                 } else {
-                    img.src = isThumb
-                        ? `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}s.jpg`
-                        : `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}${message.attachment.ext}`;
+                    img.src = sourceUrl;
                 }
             };
 
             mediaLoadPromises.push(new Promise(resolve => {
                 img.onload = () => { img.style.display = 'block'; resolve(); };
-                img.onerror = () => { loadImageFromCache(img, img.dataset.mode === 'thumb'); resolve(); };
+                img.onerror = () => {
+                    const sourceUrl = (img.dataset.mode === 'thumb')
+                        ? `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}s.jpg`
+                        : `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}${message.attachment.ext}`;
+
+                    // If src is a blob, it was a cache attempt that failed. Fallback to network.
+                    if (img.src.startsWith('blob:')) {
+                        img.src = sourceUrl;
+                        img.onerror = () => resolve(); // Give up if network fails
+                    } else if (img.src !== sourceUrl) {
+                        // This handles source_first mode where network fails, now we try cache.
+                        loadImageFromCache(img, img.dataset.mode === 'thumb');
+                    }
+                    resolve();
+                };
             }));
 
             setImageProperties(defaultToThumbnail ? 'thumb' : 'full');
@@ -3093,7 +3219,9 @@ function _populateAttachmentDivWithMedia(
             video.style.display = 'block';
             mediaElement = video;
 
-            const loadFromCache = () => {
+            const sourceUrl = `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}${extLower.startsWith('.') ? extLower : '.' + extLower}`;
+
+            const loadFromCache = (fallbackToSource = false) => {
                 if (message.attachment.localStoreId && otkMediaDB) {
                     const filehash = message.attachment.filehash_db_key;
                     if (videoBlobUrlCache.has(filehash)) {
@@ -3104,6 +3232,14 @@ function _populateAttachmentDivWithMedia(
                     const transaction = otkMediaDB.transaction(['mediaStore'], 'readonly');
                     const store = transaction.objectStore('mediaStore');
                     const request = store.get(message.attachment.localStoreId);
+
+                    const handleError = () => {
+                        if (fallbackToSource) {
+                            consoleLog(`[MediaLoad] Video cache miss/error for ${filehash}. Falling back to network.`);
+                            video.src = sourceUrl;
+                        }
+                    };
+
                     request.onsuccess = (event) => {
                         const storedItem = event.target.result;
                         if (storedItem && storedItem.blob) {
@@ -3111,18 +3247,33 @@ function _populateAttachmentDivWithMedia(
                             createdBlobUrls.add(dataURL);
                             videoBlobUrlCache.set(filehash, dataURL);
                             video.src = dataURL;
+                        } else {
+                            handleError();
                         }
                     };
+                    request.onerror = handleError;
+                } else {
+                    if (fallbackToSource) {
+                        consoleLog(`[MediaLoad] No storeId for video. Falling back to network.`);
+                        video.src = sourceUrl;
+                    }
                 }
             };
 
-            video.onerror = () => loadFromCache();
+            video.onerror = () => {
+                const filehash = message.attachment.filehash_db_key;
+                if (video.src.startsWith('blob:') && filehash && videoBlobUrlCache.has(filehash)) {
+                    consoleWarn(`[MediaLoad] Cached video blob failed to load for ${filehash}. Clearing from cache and retrying.`);
+                    videoBlobUrlCache.delete(filehash);
+                    // Prevent infinite loops: remove the onerror handler before retrying.
+                    video.onerror = null;
+                    loadFromCache(true); // Retry once from DB/network
+                }
+            };
 
-            if (mediaLoadMode === 'cache_only') {
-                if (message.attachment.localStoreId) loadFromCache();
-            } else {
-                video.src = `https://i.4cdn.org/${actualBoardForLink}/${message.attachment.tim}${extLower.startsWith('.') ? extLower : '.' + extLower}`;
-            }
+            // Always try to load from cache first, and fallback to source.
+            // This prevents "Too Many Requests" errors by not re-fetching media that is already cached.
+            loadFromCache(true);
 
             if (message.attachment.filehash_db_key && isTopLevelMessage) {
                 viewerTopLevelAttachedVideoHashes.add(message.attachment.filehash_db_key);
@@ -3333,6 +3484,12 @@ function _populateMessageBody(message, mediaLoadPromises, uniqueImageViewerHashe
                         if (timeMatch && timeMatch[1]) timestampStr = timeMatch[1];
                         if (videoId) {
                             textElement.appendChild(createYouTubeEmbedElement(videoId, timestampStr));
+                            const urlLink = document.createElement('a');
+                            urlLink.href = trimmedLine;
+                            urlLink.textContent = trimmedLine;
+                            urlLink.target = '_blank';
+                            urlLink.style.cssText = "display: block; color: #60a5fa; font-size: 11px;";
+                            textElement.appendChild(urlLink);
                             soleUrlEmbedMade = true;
                             processedAsEmbed = true;
                             break;
@@ -3352,6 +3509,12 @@ function _populateMessageBody(message, mediaLoadPromises, uniqueImageViewerHashe
                         }
                         if (id) {
                             textElement.appendChild(createTwitchEmbedElement(patternObj.type, id, timestampStr));
+                            const urlLink = document.createElement('a');
+                            urlLink.href = trimmedLine;
+                            urlLink.textContent = trimmedLine;
+                            urlLink.target = '_blank';
+                            urlLink.style.cssText = "display: block; color: #60a5fa; font-size: 11px;";
+                            textElement.appendChild(urlLink);
                             soleUrlEmbedMade = true;
                             processedAsEmbed = true;
                             break;
@@ -3366,6 +3529,12 @@ function _populateMessageBody(message, mediaLoadPromises, uniqueImageViewerHashe
                         const videoId = match[patternObj.idGroup];
                         if (videoId) {
                             textElement.appendChild(createTikTokEmbedElement(videoId));
+                            const urlLink = document.createElement('a');
+                            urlLink.href = trimmedLine;
+                            urlLink.textContent = trimmedLine;
+                            urlLink.target = '_blank';
+                            urlLink.style.cssText = "display: block; color: #60a5fa; font-size: 11px;";
+                            textElement.appendChild(urlLink);
                             soleUrlEmbedMade = true;
                             processedAsEmbed = true;
                             break;
@@ -3380,6 +3549,12 @@ function _populateMessageBody(message, mediaLoadPromises, uniqueImageViewerHashe
                         const videoId = match[patternObj.idGroup];
                         if (videoId) {
                             textElement.appendChild(createStreamableEmbedElement(videoId));
+                            const urlLink = document.createElement('a');
+                            urlLink.href = trimmedLine;
+                            urlLink.textContent = trimmedLine;
+                            urlLink.target = '_blank';
+                            urlLink.style.cssText = "display: block; color: #60a5fa; font-size: 11px;";
+                            textElement.appendChild(urlLink);
                             soleUrlEmbedMade = true;
                             processedAsEmbed = true;
                             break;
@@ -3708,14 +3883,13 @@ function createMessageElementDOM(message, mediaLoadPromises, uniqueImageViewerHa
     const headerTextColorVar = `var(--otk-msg-depth-${parity.toLowerCase()}-header-text-color)`;
     const headerBorderVar = `var(--otk-viewer-header-border-color-${parity.toLowerCase()})`;
 
+    let borderColorVar = 'transparent';
     if (userPostIds.has(message.id)) {
         backgroundColorVar = isEvenDepth ? 'var(--otk-own-msg-bg-color-even)' : 'var(--otk-own-msg-bg-color-odd)';
+        borderColorVar = isEvenDepth ? 'var(--otk-own-msg-border-color-even)' : 'var(--otk-own-msg-border-color-odd)';
     }
 
     const shouldDisableUnderline = !isTopLevelMessage;
-
-        const showFilenameKey = isEvenDepth ? 'showOddMessageFilename' : 'showEvenMessageFilename';
-        const shouldDisplayFilenames = allThemeSettings[showFilenameKey] === true; // Defaults to false if not set
 
         // --- Define all media patterns once at the top of the function ---
         const youtubePatterns = [
@@ -3806,6 +3980,9 @@ function createMessageElementDOM(message, mediaLoadPromises, uniqueImageViewerHa
         max-width: calc(100% - ${marginLeft});
         overflow-x: hidden;
     `;
+    if (borderColorVar !== 'transparent') {
+        messageDiv.style.border = `1px solid ${borderColorVar}`;
+    }
 
             // Removed the side rectangle logic that was here:
             // if (isTopLevelMessage && threadColor) { ... }
@@ -5276,6 +5453,43 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
         updateStatLine(totalMessagesElem, `- ${padNumber(mainMessagesCount, paddingLength)} Total Message${mainMessagesCount === 1 ? '' : 's'}`, newMessages, oldNewMessages, 'messages');
         updateStatLine(localImagesElem, `- ${padNumber(mainImagesCount, paddingLength)} Image${mainImagesCount === 1 ? '' : 's'}`, 0, 0, 'images');
         updateStatLine(localVideosElem, `- ${padNumber(mainVideosCount, paddingLength)} Video${mainVideosCount === 1 ? '' : 's'}`, 0, 0, 'videos');
+
+        const repliesStatElem = document.getElementById('otk-replies-stat');
+        // Replies stat update
+        const repliesCount = Array.from(unreadIds).filter(id => {
+            const msg = findMessageById(id);
+            return msg && msg.text && msg.text.includes('(You)');
+        }).length;
+
+        if (repliesStatElem) {
+            if (repliesCount > 0) {
+                repliesStatElem.textContent = `(+${repliesCount})`;
+            } else {
+                repliesStatElem.textContent = '';
+            }
+        }
+
+
+        // Flashing animation logic
+        const repliesStatAnimation = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {}).repliesStatAnimation || 'Flash';
+        const repliesStatAnimationSpeed = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {}).repliesStatAnimationSpeed || '1';
+
+        if (repliesStatElem && repliesCount > 0 && repliesStatAnimation === 'Flash') {
+            repliesStatElem.style.animation = `otk-flash ${repliesStatAnimationSpeed}s infinite`;
+            if (!titleFlashingInterval) {
+                const flashSpeed = parseFloat(repliesStatAnimationSpeed) * 1000;
+                titleFlashingInterval = setInterval(() => {
+                    document.title = document.title.startsWith('[!]') ? originalTitle : `[!] ${originalTitle}`;
+                }, flashSpeed);
+            }
+        } else if (repliesStatElem) {
+            repliesStatElem.style.animation = 'none';
+            if (titleFlashingInterval) {
+                clearInterval(titleFlashingInterval);
+                titleFlashingInterval = null;
+                document.title = originalTitle;
+            }
+        }
     }
 
     function setupTitleObserver() {
@@ -8354,6 +8568,14 @@ function createSectionHeading(text) {
 
         // --- Viewer Section ---
         const viewerSectionContent = createCollapsibleSubSection('Viewer');
+        viewerSectionContent.appendChild(createThemeOptionRow({
+            labelText: 'Provider and Format for YouTube Fallback:',
+            storageKey: 'youtubeFallbackProviderFormat',
+            cssVariable: '--otk-youtube-fallback-provider-format',
+            defaultValue: 'https://invidious.tiekoetter.com/embed/{videoId}',
+            inputType: 'text',
+            idSuffix: 'youtube-fallback-provider'
+        }));
         viewerSectionContent.appendChild(createThemeOptionRow({ labelText: "Viewer Background Colour:", storageKey: 'viewerBgColor', cssVariable: '--otk-viewer-bg-color', defaultValue: '#181818', inputType: 'color', idSuffix: 'viewer-bg' }));
         viewerSectionContent.appendChild(createImagePickerRow({
             labelText: 'Viewer Background Image:',
@@ -8571,6 +8793,35 @@ function createSectionHeading(text) {
         const evenMessagesSection = createCollapsibleSubSection('Messages (Evens)');
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Font Colour:", storageKey: 'msgDepthEvenHeaderTextColor', cssVariable: '--otk-msg-depth-even-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-even-header-text', requiresRerender: true }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Even):", storageKey: 'mediaControlsBgColorEven', cssVariable: '--otk-media-controls-bg-color-even', defaultValue: 'rgba(217, 217, 217, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorEven', cssVariable: '--otk-own-msg-border-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-even', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorOdd', cssVariable: '--otk-own-msg-border-color-odd', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-odd', requiresRerender: true }));
+
+        // --- Misc Section ---
+        const miscSectionContent = createCollapsibleSubSection('Misc');
+        miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Viewer Arrow Colour:", storageKey: 'viewerArrowColor', cssVariable: '--otk-viewer-arrow-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'viewer-arrow' }));
+        miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Viewer Arrow Border Colour:", storageKey: 'viewerArrowBorderColor', cssVariable: '--otk-viewer-arrow-border-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'viewer-arrow-border' }));
+        miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Replies Stat Colour:", storageKey: 'repliesStatColor', cssVariable: '--otk-replies-stat-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'replies-stat' }));
+        miscSectionContent.appendChild(createDropdownRow({
+            labelText: 'Replies Stat Animation:',
+            storageKey: 'repliesStatAnimation',
+            options: ['Flash', 'None'],
+            defaultValue: 'Flash',
+            requiresRerender: false
+        }));
+        miscSectionContent.appendChild(createThemeOptionRow({
+            labelText: "Replies Stat Animation Speed:",
+            storageKey: 'repliesStatAnimationSpeed',
+            cssVariable: '--otk-replies-stat-animation-speed',
+            defaultValue: '1',
+            inputType: 'number',
+            unit: null,
+            min: 0.1,
+            max: 10,
+            step: 0.1,
+            idSuffix: 'replies-stat-animation-speed',
+            requiresRerender: false
+        }));
+        themeOptionsContainer.appendChild(miscSectionContent);
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Menu Icon Colour:", storageKey: 'mediaMenuIconColor', cssVariable: '--otk-media-menu-icon-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'media-menu-icon' }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorEven', cssVariable: '--otk-viewer-header-border-color-even', defaultValue: '#777777', inputType: 'color', idSuffix: 'viewer-header-border-even', requiresRerender: true }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize', requiresRerender: true }));
@@ -8742,9 +8993,7 @@ function createSectionHeading(text) {
 
             const newBooleanSettings = [
                 { key: 'otkMsgDepthOddDisableHeaderUnderline', defaultValue: false, idSuffix: 'msg-depth-odd-disable-header-underline' },
-                { key: 'otkMsgDepthEvenDisableHeaderUnderline', defaultValue: true, idSuffix: 'msg-depth-even-disable-header-underline' },
-                { key: 'showOddMessageFilename', defaultValue: false, idSuffix: 'show-odd-filename'},
-                { key: 'showEvenMessageFilename', defaultValue: false, idSuffix: 'show-even-filename'}
+                { key: 'otkMsgDepthEvenDisableHeaderUnderline', defaultValue: true, idSuffix: 'msg-depth-even-disable-header-underline' }
             ];
             newBooleanSettings.forEach(opt => {
                 const checkbox = document.getElementById(`otk-${opt.idSuffix}-checkbox`);
@@ -9807,6 +10056,10 @@ function setupFilterWindow() {
             .otk-option-row:nth-child(even) {
                 background-color: var(--otk-options-alt-bg-color);
                 border-radius: 4px;
+            }
+            @keyframes otk-flash {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
             }
         `;
         document.head.appendChild(styleElement);
