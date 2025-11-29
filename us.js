@@ -5456,9 +5456,18 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
 
         const repliesStatElem = document.getElementById('otk-replies-stat');
         // Replies stat update
+        const userPostIdsForThreads = new Set();
+        activeThreads.forEach(threadId => {
+            const key = `b_${threadId}`; // Assuming board is 'b'
+            const postIds = JSON.parse(localStorage.getItem('otkUserPostIds') || '{}')[key] || [];
+            postIds.forEach(id => userPostIdsForThreads.add(id));
+        });
+
         const repliesCount = Array.from(unreadIds).filter(id => {
             const msg = findMessageById(id);
-            return msg && msg.text && msg.text.includes('(You)');
+            if (!msg || !msg.text) return false;
+            // Check if message text contains a quote of any of the user's post IDs
+            return Array.from(userPostIdsForThreads).some(postId => msg.text.includes(`>>${postId}`));
         }).length;
 
         if (repliesStatElem) {
