@@ -1306,6 +1306,52 @@ function createTweetEmbedElement(tweetId) {
         if (titleDisplay && titleDisplay.textContent !== 'Thread Tracker 2.7') {
             titleDisplay.textContent = 'Thread Tracker 2.7';
         }
+        // Add Viewer Navigation Arrows
+        const upArrow = document.createElement('div');
+        upArrow.id = 'otk-viewer-up-arrow';
+        upArrow.innerHTML = '&#9650;'; // Up arrow character
+        upArrow.style.cssText = `
+            position: absolute;
+            top: 95px; /* Below the GUI border */
+            right: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        upArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(upArrow);
+
+        const downArrow = document.createElement('div');
+        downArrow.id = 'otk-viewer-down-arrow';
+        downArrow.innerHTML = '&#9660;'; // Down arrow character
+        downArrow.style.cssText = `
+            position: absolute;
+            top: 130px; /* Below the up arrow */
+            right: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        downArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(downArrow);
     }
 
 
@@ -5455,15 +5501,24 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
         updateStatLine(localVideosElem, `- ${padNumber(mainVideosCount, paddingLength)} Video${mainVideosCount === 1 ? '' : 's'}`, 0, 0, 'videos');
 
         const repliesStatElem = document.getElementById('otk-replies-stat');
-        // Replies stat update
-        const repliesCount = Array.from(unreadIds).filter(id => {
-            const msg = findMessageById(id);
-            return msg && msg.text && msg.text.includes('(You)');
-        }).length;
-
         if (repliesStatElem) {
+            let repliesCount = 0;
+            const allMessages = getAllMessagesSorted();
+            for (const message of allMessages) {
+                if (message.text) {
+                    const quotes = message.text.match(/>>(\d+)/g) || [];
+                    for (const quote of quotes) {
+                        const quoteId = parseInt(quote.substring(2));
+                        if (userPostIds.has(quoteId)) {
+                            repliesCount++;
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (repliesCount > 0) {
-                repliesStatElem.textContent = `(+${repliesCount})`;
+                repliesStatElem.textContent = `Replies to Your Posts: ${repliesCount}`;
             } else {
                 repliesStatElem.textContent = '';
             }
@@ -8782,19 +8837,31 @@ function createSectionHeading(text) {
         // --- Messages (Odds) Section ---
         const oddMessagesSection = createCollapsibleSubSection('Messages (Odds)');
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Font Colour:", storageKey: 'msgDepthOddHeaderTextColor', cssVariable: '--otk-msg-depth-odd-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-odd-header-text', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Odd):", storageKey: 'mediaControlsBgColorOdd', cssVariable: '--otk-media-controls-bg-color-odd', defaultValue: 'rgba(255, 255, 255, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-odd' }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorOdd', cssVariable: '--otk-viewer-header-border-color-odd', defaultValue: '#000000', inputType: 'color', idSuffix: 'viewer-header-border-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthOddTextColor', cssVariable: '--otk-msg-depth-odd-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-odd-text', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthOddContentFontSize', cssVariable: '--otk-msg-depth-odd-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-odd-content-fontsize', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthOddBgColor', cssVariable: '--otk-msg-depth-odd-bg-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'msg-depth-odd-bg', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthOddTextColor', cssVariable: '--otk-msg-depth-odd-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-odd-text', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorOdd', cssVariable: '--otk-own-msg-bg-color-odd', defaultValue: '#d1e7ff', inputType: 'color', idSuffix: 'own-msg-bg-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorOdd', cssVariable: '--otk-own-msg-border-color-odd', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Odd):", storageKey: 'mediaControlsBgColorOdd', cssVariable: '--otk-media-controls-bg-color-odd', defaultValue: 'rgba(255, 255, 255, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-odd' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorOdd', cssVariable: '--otk-block-icon-color-odd', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-odd' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
 
         // --- Messages (Evens) Section ---
         const evenMessagesSection = createCollapsibleSubSection('Messages (Evens)');
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Font Colour:", storageKey: 'msgDepthEvenHeaderTextColor', cssVariable: '--otk-msg-depth-even-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-even-header-text', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Even):", storageKey: 'mediaControlsBgColorEven', cssVariable: '--otk-media-controls-bg-color-even', defaultValue: 'rgba(217, 217, 217, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorEven', cssVariable: '--otk-viewer-header-border-color-even', defaultValue: '#777777', inputType: 'color', idSuffix: 'viewer-header-border-even', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthEvenTextColor', cssVariable: '--otk-msg-depth-even-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-even-text', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthEvenBgColor', cssVariable: '--otk-msg-depth-even-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'msg-depth-even-bg', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorEven', cssVariable: '--otk-own-msg-bg-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-bg-even', requiresRerender: true }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorEven', cssVariable: '--otk-own-msg-border-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-even', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorOdd', cssVariable: '--otk-own-msg-border-color-odd', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-odd', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Even):", storageKey: 'mediaControlsBgColorEven', cssVariable: '--otk-media-controls-bg-color-even', defaultValue: 'rgba(217, 217, 217, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Menu Icon Colour:", storageKey: 'mediaMenuIconColor', cssVariable: '--otk-media-menu-icon-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'media-menu-icon' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
 
         // --- Misc Section ---
         const miscSectionContent = createCollapsibleSubSection('Misc');
@@ -8822,18 +8889,6 @@ function createSectionHeading(text) {
             requiresRerender: false
         }));
         themeOptionsContainer.appendChild(miscSectionContent);
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Menu Icon Colour:", storageKey: 'mediaMenuIconColor', cssVariable: '--otk-media-menu-icon-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'media-menu-icon' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorEven', cssVariable: '--otk-viewer-header-border-color-even', defaultValue: '#777777', inputType: 'color', idSuffix: 'viewer-header-border-even', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthEvenBgColor', cssVariable: '--otk-msg-depth-even-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'msg-depth-even-bg', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthEvenTextColor', cssVariable: '--otk-msg-depth-even-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-even-text', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorEven', cssVariable: '--otk-own-msg-bg-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-bg-even', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorOdd', cssVariable: '--otk-block-icon-color-odd', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-odd' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
 
         // --- Options Panel Section ---
         const optionsPanelSection = createCollapsibleSubSection('Options Panel');
