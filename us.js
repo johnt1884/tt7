@@ -193,6 +193,7 @@ document.addEventListener("visibilitychange", () => {
     let multiQuoteSelections = new Set();
 let userPostIds = new Set();
 let unreadIds = new Set(JSON.parse(localStorage.getItem(UNREAD_MESSAGE_IDS_KEY) || '[]'));
+let newReplyIds = new Set(JSON.parse(localStorage.getItem('otkNewReplyIds') || '[]'));
 
     // IndexedDB instance
     let otkMediaDB = null;
@@ -936,52 +937,6 @@ function createTweetEmbedElement(tweetId) {
         `;
         otkGuiWrapper.appendChild(borderDiv);
 
-        // Add Viewer Navigation Arrows
-        const upArrow = document.createElement('div');
-        upArrow.id = 'otk-viewer-up-arrow';
-        upArrow.innerHTML = '&#9650;'; // Up arrow character
-        upArrow.style.cssText = `
-            position: absolute;
-            top: 95px; /* Below the GUI border */
-            right: 15px;
-            cursor: pointer;
-            font-size: 20px;
-            color: var(--otk-viewer-arrow-color, #ff8040);
-            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
-            border-radius: 3px;
-            padding: 0px 5px;
-            z-index: 10000;
-        `;
-        upArrow.addEventListener('click', () => {
-            const messagesContainer = document.getElementById('otk-messages-container');
-            if (messagesContainer) {
-                messagesContainer.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        });
-        otkGuiWrapper.appendChild(upArrow);
-
-        const downArrow = document.createElement('div');
-        downArrow.id = 'otk-viewer-down-arrow';
-        downArrow.innerHTML = '&#9660;'; // Down arrow character
-        downArrow.style.cssText = `
-            position: absolute;
-            top: 130px; /* Below the up arrow */
-            right: 15px;
-            cursor: pointer;
-            font-size: 20px;
-            color: var(--otk-viewer-arrow-color, #ff8040);
-            border: 1px solid var(--otk-viewer-arrow-border-color, #ff8040);
-            border-radius: 3px;
-            padding: 0px 5px;
-            z-index: 10000;
-        `;
-        downArrow.addEventListener('click', () => {
-            const messagesContainer = document.getElementById('otk-messages-container');
-            if (messagesContainer) {
-                messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
-            }
-        });
-        otkGuiWrapper.appendChild(downArrow);
 
         document.body.style.paddingTop = '89px';
         document.body.style.margin = '0';
@@ -1120,17 +1075,6 @@ function createTweetEmbedElement(tweetId) {
         otkStatsDisplay.appendChild(totalMessagesStat);
         otkStatsDisplay.appendChild(localImagesStat);
         otkStatsDisplay.appendChild(localVideosStat);
-
-        const repliesStat = document.createElement('div');
-        repliesStat.id = 'otk-replies-stat';
-        repliesStat.style.cssText = `
-            display: flex;
-            align-items: center;
-            color: var(--otk-replies-stat-color, var(--otk-stats-text-color));
-            min-width: 200px;
-            white-space: nowrap;
-        `;
-        otkStatsDisplay.appendChild(repliesStat);
 
         statsWrapper.appendChild(titleContainer);
         statsWrapper.appendChild(otkStatsDisplay);
@@ -1306,6 +1250,52 @@ function createTweetEmbedElement(tweetId) {
         if (titleDisplay && titleDisplay.textContent !== 'Thread Tracker 2.7') {
             titleDisplay.textContent = 'Thread Tracker 2.7';
         }
+        // Add Viewer Navigation Arrows
+        const upArrow = document.createElement('div');
+        upArrow.id = 'otk-viewer-up-arrow';
+        upArrow.innerHTML = '&#9650;'; // Up arrow character
+        upArrow.style.cssText = `
+            position: absolute;
+            top: 95px; /* Below the GUI border */
+            right: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: none;
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        upArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(upArrow);
+
+        const downArrow = document.createElement('div');
+        downArrow.id = 'otk-viewer-down-arrow';
+        downArrow.innerHTML = '&#9660;'; // Down arrow character
+        downArrow.style.cssText = `
+            position: absolute;
+            top: 130px; /* Below the up arrow */
+            right: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--otk-viewer-arrow-color, #ff8040);
+            border: none;
+            border-radius: 3px;
+            padding: 0px 5px;
+            z-index: 10000;
+        `;
+        downArrow.addEventListener('click', () => {
+            const messagesContainer = document.getElementById('otk-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+            }
+        });
+        otkGuiWrapper.appendChild(downArrow);
     }
 
 
@@ -2509,6 +2499,7 @@ function renderThreadList() {
             URL.revokeObjectURL(url);
         }
         createdBlobUrls.clear();
+        videoBlobUrlCache.clear(); // Also clear the video blob URL cache
 
         // Clear state for full rebuild (using global sets)
         renderedMessageIdsInViewer.clear();
@@ -2516,7 +2507,7 @@ function renderThreadList() {
         viewerTopLevelAttachedVideoHashes.clear(); // Clear new set for attached videos in top-level messages
         viewerTopLevelEmbedIds.clear(); // Clear new set for embeds in top-level messages
         renderedFullSizeImageHashes.clear(); // Clear for new viewer session
-        consoleLog("[renderMessagesInViewer] Cleared renderedMessageIdsInViewer, unique image hashes, top-level video tracking sets, and renderedFullSizeImageHashes for full rebuild.");
+        consoleLog("[renderMessagesInViewer] Cleared renderedMessageIdsInViewer, blob caches, unique image hashes, top-level video tracking sets, and renderedFullSizeImageHashes for full rebuild.");
 
         otkViewer.innerHTML = ''; // Clear previous content
 
@@ -2899,31 +2890,52 @@ updateDisplayedStatistics(false); // Update stats after all media processing is 
 
         if (newestVisibleUnreadMessage) {
             const cutoffTime = newestVisibleUnreadMessage.time;
-            const allMessages = getAllMessagesSorted(); // This is sorted by time ascending
-            const idsToKeep = new Set();
-            const idsToRemove = new Set();
+            const allMessages = getAllMessagesSorted();
 
-            for (const unreadId of unreadIds) {
-                const message = allMessages.find(m => m.id === unreadId);
+            let unreadChanged = false;
+            const newUnreadIds = new Set();
+            const unreadToRemove = new Set();
+            for (const id of unreadIds) {
+                const message = allMessages.find(m => m.id === id);
                 if (message && message.time > cutoffTime) {
-                    idsToKeep.add(unreadId);
+                    newUnreadIds.add(id);
                 } else {
-                    idsToRemove.add(unreadId);
+                    unreadToRemove.add(id);
+                    unreadChanged = true;
                 }
             }
 
-            if (idsToRemove.size > 0) {
-                consoleLog(`[ScrollRead] Marking ${idsToRemove.size} messages as read.`);
-                unreadIds = idsToKeep;
+            let repliesChanged = false;
+            const newNewReplyIds = new Set();
+            const repliesToRemove = new Set();
+            for (const id of newReplyIds) {
+                const message = allMessages.find(m => m.id === id);
+                if (message && message.time > cutoffTime) {
+                    newNewReplyIds.add(id);
+                } else {
+                    repliesToRemove.add(id);
+                    repliesChanged = true;
+                }
+            }
 
-                // Update UI
-                idsToRemove.forEach(id => {
+            if (unreadChanged) {
+                consoleLog(`[ScrollRead] Marking ${unreadToRemove.size} messages as read.`);
+                unreadIds = newUnreadIds;
+                unreadToRemove.forEach(id => {
                     const elements = document.querySelectorAll(`.otk-message-container-main[data-message-id='${id}']`);
                     elements.forEach(el => el.classList.remove('is-unread'));
                 });
-
                 localStorage.setItem(UNREAD_MESSAGE_IDS_KEY, JSON.stringify(Array.from(unreadIds)));
-                updateDisplayedStatistics(); // This will update the (+n) stat
+            }
+
+            if (repliesChanged) {
+                consoleLog(`[ScrollRead] Marking ${repliesToRemove.size} replies as seen.`);
+                newReplyIds = newNewReplyIds;
+                localStorage.setItem('otkNewReplyIds', JSON.stringify(Array.from(newReplyIds)));
+            }
+
+            if (unreadChanged || repliesChanged) {
+                updateDisplayedStatistics();
             }
         }
     }
@@ -4763,11 +4775,27 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
             window.dispatchEvent(new CustomEvent('otkMessagesUpdated'));
             renderThreadList();
 
-            const newIds = newMessages.map(m => m.id);
-            if (newIds.length > 0) {
+            if (newMessages.length > 0) {
+                const newIds = newMessages.map(m => m.id);
                 newIds.forEach(id => unreadIds.add(id));
                 localStorage.setItem(UNREAD_MESSAGE_IDS_KEY, JSON.stringify(Array.from(unreadIds)));
                 consoleLog(`[BG] Added ${newIds.length} new message IDs to unread list. Total unread: ${unreadIds.size}`);
+
+                // Check for new replies
+                newMessages.forEach(message => {
+                    if (message.text) {
+                        const quotes = message.text.match(/>>(\d+)/g) || [];
+                        for (const quote of quotes) {
+                            const quoteId = parseInt(quote.substring(2));
+                            if (userPostIds.has(quoteId)) {
+                                newReplyIds.add(message.id);
+                                break; // Only count one reply per message
+                            }
+                        }
+                    }
+                });
+                localStorage.setItem('otkNewReplyIds', JSON.stringify(Array.from(newReplyIds)));
+                consoleLog(`[BG] Found ${newReplyIds.size} new replies to user posts.`);
             }
 
             // **FIX: Declare viewerIsOpen before it is used.**
@@ -5015,8 +5043,10 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
             window.dispatchEvent(new CustomEvent('otkMessagesUpdated'));
 
             unreadIds.clear();
+            newReplyIds.clear();
             localStorage.setItem(UNREAD_MESSAGE_IDS_KEY, JSON.stringify([]));
-            consoleLog(`[Manual Refresh] Cleared unread message list.`);
+            localStorage.setItem('otkNewReplyIds', JSON.stringify([]));
+            consoleLog(`[Manual Refresh] Cleared unread message and new reply lists.`);
 
         let viewerIsOpen = otkViewer && otkViewer.style.display === 'block';
 
@@ -5165,6 +5195,7 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
             localStorage.setItem(LOCAL_IMAGE_COUNT_KEY, '0');
             localStorage.setItem(LOCAL_VIDEO_COUNT_KEY, '0');
             localStorage.removeItem(UNREAD_MESSAGE_IDS_KEY);
+            localStorage.removeItem('otkNewReplyIds');
             localStorage.removeItem(BLOCKED_THREADS_KEY);
             consoleLog('[Clear] LocalStorage (threads, messages, seen embeds, media counts, ACTIVE theme) cleared/reset. CUSTOM THEMES PRESERVED.');
 
@@ -5402,7 +5433,24 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
 
         const liveThreadsCount = activeThreads.length;
 
-        const updateStatLine = (container, baseText, newCount, startCount, id) => {
+        const allMessages = getAllMessagesSorted();
+        let totalRepliesCount = 0;
+        for (const message of allMessages) {
+            if (message.text) {
+                const quotes = message.text.match(/>>(\d+)/g) || [];
+                for (const quote of quotes) {
+                    const quoteId = parseInt(quote.substring(2));
+                    if (userPostIds.has(quoteId)) {
+                        totalRepliesCount++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const newRepliesCount = newReplyIds.size;
+
+        const updateStatLine = (container, baseText, newCount, startCount, id, newReplies = 0) => {
             let lineContainer = document.getElementById(`otk-stat-${id}`);
             if (!lineContainer) {
                 lineContainer = document.createElement('div');
@@ -5421,6 +5469,16 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
                 newCountSpan.style.color = 'var(--otk-background-updates-stats-text-color)';
                 newCountSpan.style.marginLeft = '5px';
                 lineContainer.appendChild(newCountSpan);
+
+                if (id === 'messages') {
+                    const newRepliesSpan = document.createElement('span');
+                    newRepliesSpan.id = 'otk-stat-new-replies';
+                    newRepliesSpan.className = 'new-stat';
+                    newRepliesSpan.style.color = 'var(--otk-replies-stat-color)';
+                    newRepliesSpan.style.marginLeft = '5px';
+                    lineContainer.appendChild(newRepliesSpan);
+                }
+
                 container.appendChild(lineContainer);
             }
 
@@ -5431,7 +5489,7 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
             dashSpan.textContent = '• ';
             dashSpan.style.color = 'var(--otk-stats-dash-color)';
 
-            const textNode = document.createTextNode(baseText.substring(2)); // Get text after '• '
+            const textNode = document.createTextNode(baseText.substring(2));
 
             baseSpan.appendChild(dashSpan);
             baseSpan.appendChild(textNode);
@@ -5444,46 +5502,50 @@ async function backgroundRefreshThreadsAndMessages(options = {}) { // Added opti
                     newCountSpan.textContent = `(+${newCount})`;
                 }
             } else {
-                newCountSpan.textContent = ''; // Explicitly clear if no new items
+                newCountSpan.textContent = '';
+            }
+
+            if (id === 'messages') {
+                const newRepliesSpan = document.getElementById('otk-stat-new-replies');
+                if (newReplies > 0) {
+                    newRepliesSpan.textContent = `(+${newReplies})`;
+                } else {
+                    newRepliesSpan.textContent = '';
+                }
             }
         };
 
         const paddingLength = 4;
         updateStatLine(threadsTrackedElem, `- ${padNumber(liveThreadsCount, paddingLength)} Live Thread${liveThreadsCount === 1 ? '' : 's'}`, 0, 0, 'threads');
-        updateStatLine(totalMessagesElem, `- ${padNumber(mainMessagesCount, paddingLength)} Total Message${mainMessagesCount === 1 ? '' : 's'}`, newMessages, oldNewMessages, 'messages');
+        updateStatLine(totalMessagesElem, `- ${padNumber(mainMessagesCount, paddingLength)} Total Message${mainMessagesCount === 1 ? '' : 's'}`, newMessages, oldNewMessages, 'messages', newRepliesCount);
         updateStatLine(localImagesElem, `- ${padNumber(mainImagesCount, paddingLength)} Image${mainImagesCount === 1 ? '' : 's'}`, 0, 0, 'images');
         updateStatLine(localVideosElem, `- ${padNumber(mainVideosCount, paddingLength)} Video${mainVideosCount === 1 ? '' : 's'}`, 0, 0, 'videos');
 
-        const repliesStatElem = document.getElementById('otk-replies-stat');
-        // Replies stat update
-        const repliesCount = Array.from(unreadIds).filter(id => {
-            const msg = findMessageById(id);
-            return msg && msg.text && msg.text.includes('(You)');
-        }).length;
+        // Title Flashing Logic
+        const themeSettings = JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {};
+        const newMessagesAnimation = themeSettings.newMessagesStatAnimation !== 'None';
+        const repliesAnimation = themeSettings.repliesStatAnimation !== 'None';
 
-        if (repliesStatElem) {
-            if (repliesCount > 0) {
-                repliesStatElem.textContent = `(+${repliesCount})`;
-            } else {
-                repliesStatElem.textContent = '';
-            }
-        }
+        const shouldFlashNewMessages = newMessages > 0 && newMessagesAnimation;
+        const shouldFlashReplies = newRepliesCount > 0 && repliesAnimation;
 
-
-        // Flashing animation logic
-        const repliesStatAnimation = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {}).repliesStatAnimation || 'Flash';
-        const repliesStatAnimationSpeed = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {}).repliesStatAnimationSpeed || '1';
-
-        if (repliesStatElem && repliesCount > 0 && repliesStatAnimation === 'Flash') {
-            repliesStatElem.style.animation = `otk-flash ${repliesStatAnimationSpeed}s infinite`;
+        if (shouldFlashNewMessages || shouldFlashReplies) {
             if (!titleFlashingInterval) {
-                const flashSpeed = parseFloat(repliesStatAnimationSpeed) * 1000;
+                const newMessagesSpeed = parseFloat(themeSettings.newMessagesStatAnimationSpeed || '1') * 1000;
+                const repliesSpeed = parseFloat(themeSettings.repliesStatAnimationSpeed || '1') * 1000;
+                // Use the faster of the two speeds if both are active
+                const flashSpeed = (shouldFlashNewMessages && shouldFlashReplies) ? Math.min(newMessagesSpeed, repliesSpeed) : (shouldFlashNewMessages ? newMessagesSpeed : repliesSpeed);
+
                 titleFlashingInterval = setInterval(() => {
-                    document.title = document.title.startsWith('[!]') ? originalTitle : `[!] ${originalTitle}`;
+                    let titleText = [];
+                    if (shouldFlashNewMessages) titleText.push(`+${newMessages}`);
+                    if (shouldFlashReplies) titleText.push(`r+${newRepliesCount}`);
+
+                    const prefix = `[${titleText.join(' ')}]`;
+                    document.title = document.title.startsWith(prefix) ? originalTitle : `${prefix} ${originalTitle}`;
                 }, flashSpeed);
             }
-        } else if (repliesStatElem) {
-            repliesStatElem.style.animation = 'none';
+        } else {
             if (titleFlashingInterval) {
                 clearInterval(titleFlashingInterval);
                 titleFlashingInterval = null;
@@ -7176,6 +7238,137 @@ function createSectionHeading(text) {
     h.style.cssText = "margin: 0; color: #cccccc; font-size: 13px; padding: 4px 10px 4px 30px; font-weight: bold; text-align: left; display: flex; align-items: center;";
     return h;
 }
+function createThemeOptionRow(options) {
+    // options = { labelText, storageKey, cssVariable, defaultValue, inputType, unit, min, max, step, idSuffix, requiresRerender }
+    const group = document.createElement('div');
+    group.classList.add('otk-option-row');
+
+    const label = document.createElement('label');
+    label.textContent = options.labelText;
+    label.htmlFor = `otk-${options.idSuffix}`;
+    label.style.cssText = `
+        font-size: 12px;
+        text-align: left;
+    `;
+
+    const controlsWrapperDiv = document.createElement('div');
+    controlsWrapperDiv.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-end;
+    `;
+
+    const mainInput = document.createElement('input');
+    mainInput.type = options.inputType || 'text';
+    mainInput.id = `otk-${options.idSuffix}`;
+    mainInput.style.cssText = `
+        flex: 1 1 70px;
+        min-width: 50px;
+        height: 25px;
+        box-sizing: border-box;
+        font-size: 12px;
+        text-align: right;
+    `;
+
+    if (options.inputType === 'number') {
+        if (options.min !== undefined) mainInput.min = options.min;
+        if (options.max !== undefined) mainInput.max = options.max;
+        if (options.step !== undefined) mainInput.step = options.step;
+    }
+
+    let hexInput;
+    if (options.inputType === 'color') {
+        hexInput = document.createElement('input');
+        hexInput.type = 'text';
+        hexInput.id = `otk-${options.idSuffix}-hex`;
+        hexInput.style.cssText = `
+            flex: 1 1 70px;
+            min-width: 50px;
+            height: 25px;
+            box-sizing: border-box;
+            font-size: 12px;
+            text-align: right;
+        `;
+        mainInput.style.flexGrow = '0';
+        mainInput.style.flexShrink = '0';
+        mainInput.style.width = '30px';
+        mainInput.style.padding = '1px';
+    }
+
+
+    const defaultBtn = document.createElement('button');
+    defaultBtn.textContent = 'Default';
+    defaultBtn.style.cssText = `
+        flex-grow: 0;
+        flex-shrink: 0;
+        padding: 2px 6px;
+        height: 25px;
+        font-size: 11px;
+        box-sizing: border-box;
+        width: 70px;
+    `;
+
+    group.appendChild(label);
+    if (hexInput) {
+        controlsWrapperDiv.appendChild(hexInput);
+    }
+    controlsWrapperDiv.appendChild(mainInput);
+    controlsWrapperDiv.appendChild(defaultBtn);
+    group.appendChild(controlsWrapperDiv);
+
+    const settings = JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {};
+    let initialValue = settings[options.storageKey] || options.defaultValue;
+
+    const updateInputs = (value) => {
+        let displayValue = value;
+        if (options.unit && typeof displayValue === 'string' && displayValue.endsWith(options.unit)) {
+            displayValue = displayValue.replace(options.unit, '');
+        }
+        mainInput.value = displayValue;
+        if (hexInput) {
+            hexInput.value = value;
+            mainInput.value = value;
+        }
+    };
+
+    updateInputs(initialValue);
+
+    const saveValue = (newValue) => {
+        let valueToSave = newValue;
+        if (options.unit && !String(newValue).endsWith(options.unit)) {
+            valueToSave += options.unit;
+        }
+        saveThemeSetting(options.storageKey, valueToSave, options.requiresRerender || false);
+        if (options.cssVariable) {
+            document.documentElement.style.setProperty(options.cssVariable, valueToSave);
+        }
+    };
+
+    mainInput.addEventListener('change', (e) => {
+        saveValue(e.target.value);
+        if (hexInput) {
+            hexInput.value = e.target.value;
+        }
+    });
+
+    if (hexInput) {
+        hexInput.addEventListener('change', (e) => {
+            saveValue(e.target.value);
+            mainInput.value = e.target.value;
+        });
+    }
+
+    defaultBtn.addEventListener('click', () => {
+        updateInputs(options.defaultValue);
+        saveValue(options.defaultValue);
+        // After setting to default, re-apply all theme settings to ensure consistency
+        applyThemeSettings({ forceRerender: false });
+    });
+
+    return group;
+}
+
     function setupOptionsWindow() {
         let prePreviewSettings = null;
         let currentlyPreviewingThemeName = null;
@@ -8082,224 +8275,6 @@ function createSectionHeading(text) {
             return row;
         }
 
-        // Helper function to create a theme option row
-        function createThemeOptionRow(options) {
-            // options = { labelText, storageKey, cssVariable, defaultValue, inputType ('color'|'number'), unit ('px'|null), min, max, idSuffix }
-            const group = document.createElement('div');
-            group.classList.add('otk-option-row');
-
-            const label = document.createElement('label');
-            label.textContent = options.labelText;
-            label.htmlFor = `otk-${options.idSuffix}`; // Points to the main input (picker or number input)
-            label.style.cssText = `
-                font-size: 12px;
-                text-align: left;
-            `;
-
-            // Create a wrapper for all controls (hex, main input, button)
-            const controlsWrapperDiv = document.createElement('div');
-            controlsWrapperDiv.style.cssText = `
-                display: flex;
-                align-items: center; /* Vertically align controls */
-                gap: 8px; /* Space between controls */
-                min-width: 0; /* Allow shrinking if needed */
-                justify-content: flex-end;
-                width: 100%;
-            `;
-
-            let hexInput = null;
-            if (options.inputType === 'color') {
-                hexInput = document.createElement('input');
-                hexInput.type = 'text';
-                hexInput.id = `otk-${options.idSuffix}-hex`;
-                hexInput.style.cssText = `
-                    flex: 1 1 70px; /* flex-grow, flex-shrink, flex-basis */
-                    min-width: 50px;
-                    height: 25px;
-                    box-sizing: border-box;
-                    font-size: 12px;
-                    text-align: right;
-                `;
-            }
-
-            const mainInput = document.createElement('input');
-            mainInput.type = options.inputType;
-            mainInput.id = `otk-${options.idSuffix}`;
-            if (options.inputType === 'color') {
-                mainInput.style.cssText = `
-                    flex-grow: 0;
-                    flex-shrink: 0;
-                    width: 30px; /* Adjusted width */
-                    height: 25px;
-                    padding: 1px; /* Adjusted padding */
-                    box-sizing: border-box;
-                `;
-            } else if (options.inputType === 'number' || options.inputType === 'text') {
-                mainInput.style.cssText = `
-                    flex: 1 1 70px; /* flex-grow, flex-shrink, flex-basis */
-                    min-width: 50px;
-                    height: 25px;
-                    box-sizing: border-box;
-                    font-size: 12px;
-                `;
-                // Add text-align: right for number inputs created by createThemeOptionRow
-                if (options.inputType === 'number' || options.inputType === 'text') {
-                    mainInput.style.textAlign = 'right';
-                }
-                if (options.min !== undefined) mainInput.min = options.min;
-                if (options.max !== undefined) mainInput.max = options.max;
-                if (options.step !== undefined) mainInput.step = options.step;
-            }
-
-            const defaultBtn = document.createElement('button');
-            defaultBtn.textContent = 'Default';
-            defaultBtn.style.cssText = `
-                flex-grow: 0;
-                flex-shrink: 0;
-                padding: 2px 6px; /* Adjusted padding */
-                height: 25px;
-                font-size: 11px;
-                box-sizing: border-box;
-                width: 70px;
-            `;
-
-            group.appendChild(label);
-
-            // Append controls to their wrapper
-            if (hexInput) {
-                controlsWrapperDiv.appendChild(hexInput);
-            }
-            controlsWrapperDiv.appendChild(mainInput);
-            controlsWrapperDiv.appendChild(defaultBtn);
-
-            group.appendChild(controlsWrapperDiv); // Append the wrapper to the main group
-
-            // Determine initial value for inputs
-            let initialValue = getComputedStyle(document.documentElement).getPropertyValue(options.cssVariable)?.trim() || options.defaultValue;
-            if (options.unit && initialValue.endsWith(options.unit)) {
-                initialValue = initialValue.replace(options.unit, '');
-            }
-
-            if (options.inputType === 'color') {
-                if (hexInput) hexInput.value = initialValue;
-                mainInput.value = initialValue; // Color picker also needs full hex
-            } else if (options.inputType === 'number') {
-                mainInput.value = initialValue;
-            } else if (options.inputType === 'text') {
-                mainInput.value = initialValue;
-            }
-
-            // Event handling
-            const updateSetting = (value, fromColorPicker = false) => { // Added fromColorPicker flag
-                let processedValue = value.trim();
-                if (options.inputType === 'color') {
-                    if (processedValue === '') {
-                        // Allow empty string to clear the color
-                    } else if (!/^#[0-9A-F]{6}$/i.test(processedValue) && !/^#[0-9A-F]{3}$/i.test(processedValue)) {
-                        consoleWarn(`Invalid hex color for ${options.labelText}:`, processedValue);
-                        // Restore previous valid values if possible, or default
-                        let currentSaved = options.defaultValue;
-                        try {
-                            currentSaved = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {})[options.storageKey] || options.defaultValue;
-                        } catch (e) {
-                            consoleError("Error parsing theme settings from localStorage:", e);
-                        }
-                        if (hexInput) hexInput.value = currentSaved;
-                        mainInput.value = currentSaved;
-                        return;
-                    }
-                    // If the update is coming from the color picker, hexInput.value is already correct via its own listener.
-                    // If the update is from hexInput, update mainInput (color picker).
-                    if (!fromColorPicker && hexInput) mainInput.value = processedValue;
-                    // If the update is from color picker, update hexInput.
-                    if (fromColorPicker && hexInput) hexInput.value = processedValue;
-
-                } else if (options.inputType === 'number') {
-                    const numValue = parseFloat(processedValue);
-                    if (isNaN(numValue) || (options.min !== undefined && numValue < options.min) || (options.max !== undefined && numValue > options.max)) {
-                        consoleWarn(`Invalid number value for ${options.labelText}:`, processedValue);
-                         let currentSaved = options.defaultValue;
-                         try {
-                            currentSaved = (JSON.parse(localStorage.getItem(THEME_SETTINGS_KEY)) || {})[options.storageKey] || options.defaultValue;
-                         } catch (e) {
-                            consoleError("Error parsing theme settings from localStorage:", e);
-                         }
-                        mainInput.value = currentSaved.replace(options.unit || '', '');
-                        return;
-                    }
-                    mainInput.value = numValue; // Update input with validated number
-                    processedValue = numValue + (options.unit || '');
-                }
-
-                if (options.storageKey === 'viewerQuote1HeaderBorderColor' || options.storageKey === 'viewerQuote2plusHeaderBorderColor') {
-                    consoleLog(`[Debug UpdateSetting] Applying to ${options.cssVariable}: ${processedValue} (StorageKey: ${options.storageKey})`);
-                }
-
-                document.documentElement.style.setProperty(options.cssVariable, processedValue || 'transparent');
-                saveThemeSetting(options.storageKey, processedValue);
-                // If this is the cog icon color, update it directly as it's not part of applyThemeSettings' normal flow for self-update
-                if (options.storageKey === 'cogIconColor') {
-                     const cogIcon = document.getElementById('otk-settings-cog');
-                     if(cogIcon) cogIcon.style.color = processedValue;
-                }
-            };
-
-            if (hexInput) { // For color inputs
-                hexInput.addEventListener('input', (e) => { // Real-time update from hex input to color picker
-                    const hexValue = e.target.value.trim();
-                    // Basic validation for a complete hex code (3, 4, 6, or 8 digits after #)
-                    if (/^#([0-9A-F]{3}|[0-9A-F]{4}|[0-9A-F]{6}|[0-9A-F]{8})$/i.test(hexValue)) {
-                        mainInput.value = hexValue;
-                    }
-                    // The 'change' listener below will handle full validation and saving.
-                });
-                hexInput.addEventListener('change', (e) => updateSetting(e.target.value, false)); // Fire on change (blur/enter) for saving
-
-                mainInput.addEventListener('input', (e) => { // Color picker updates continuously
-                    const pickerValue = e.target.value;
-                    // Update hex field immediately as picker changes, assuming pickerValue is standard hex
-                    if (pickerValue.startsWith('#')) { // Basic check that it's likely a hex color string
-                        hexInput.value = pickerValue;
-                    } else {
-                        // This case should ideally not happen with standard browser behavior.
-                        // If pickerValue is not hex (e.g., 'rgb(r,g,b)'), we might need to convert it or log an error.
-                        // For now, we'll only update hexInput if it looks like hex.
-                        // The robust validation and saving happens on 'change'.
-                        consoleWarn(`Color picker returned non-hex value during input: ${pickerValue}. Hex field not updated in real-time.`);
-                    }
-
-                    // Call updateSetting to apply the change to CSS variables etc.
-                    // updateSetting itself will validate the hex code before applying it.
-                    updateSetting(pickerValue, true); // Pass flag true
-                });
-            } else { // For number inputs
-                mainInput.addEventListener('change', (e) => updateSetting(e.target.value));
-            }
-
-            defaultBtn.addEventListener('click', () => {
-                document.documentElement.style.removeProperty(options.cssVariable); // Reverts to CSS default
-                let cssDefaultValue = getComputedStyle(document.documentElement).getPropertyValue(options.cssVariable)?.trim() || options.defaultValue;
-
-                if (options.unit && cssDefaultValue.endsWith(options.unit)) {
-                    cssDefaultValue = cssDefaultValue.replace(options.unit, '');
-                }
-                if (options.inputType === 'color') {
-                    if (hexInput) hexInput.value = cssDefaultValue;
-                    mainInput.value = cssDefaultValue;
-                } else {
-                    mainInput.value = cssDefaultValue;
-                }
-                saveThemeSetting(options.storageKey, null, options.requiresRerender);
-                // If this is the cog icon color, update it directly
-                if (options.storageKey === 'cogIconColor') {
-                     const cogIcon = document.getElementById('otk-settings-cog');
-                     if(cogIcon) cogIcon.style.color = ''; // Clear inline style to use CSS var
-                }
-            });
-            // Initial application from saved settings (if any) is handled by applyThemeSettings call later.
-            // This function just sets up the row and its default state based on current CSS or fallback.
-            return group;
-        }
 
         function createDivider() {
             const hr = document.createElement('hr');
@@ -8782,25 +8757,55 @@ function createSectionHeading(text) {
         // --- Messages (Odds) Section ---
         const oddMessagesSection = createCollapsibleSubSection('Messages (Odds)');
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Font Colour:", storageKey: 'msgDepthOddHeaderTextColor', cssVariable: '--otk-msg-depth-odd-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-odd-header-text', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Odd):", storageKey: 'mediaControlsBgColorOdd', cssVariable: '--otk-media-controls-bg-color-odd', defaultValue: 'rgba(255, 255, 255, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-odd' }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorOdd', cssVariable: '--otk-viewer-header-border-color-odd', defaultValue: '#000000', inputType: 'color', idSuffix: 'viewer-header-border-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthOddTextColor', cssVariable: '--otk-msg-depth-odd-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-odd-text', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthOddContentFontSize', cssVariable: '--otk-msg-depth-odd-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-odd-content-fontsize', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthOddBgColor', cssVariable: '--otk-msg-depth-odd-bg-color', defaultValue: '#ffffff', inputType: 'color', idSuffix: 'msg-depth-odd-bg', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthOddTextColor', cssVariable: '--otk-msg-depth-odd-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-odd-text', requiresRerender: true }));
         oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorOdd', cssVariable: '--otk-own-msg-bg-color-odd', defaultValue: '#d1e7ff', inputType: 'color', idSuffix: 'own-msg-bg-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorOdd', cssVariable: '--otk-own-msg-border-color-odd', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-odd', requiresRerender: true }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Odd):", storageKey: 'mediaControlsBgColorOdd', cssVariable: '--otk-media-controls-bg-color-odd', defaultValue: 'rgba(255, 255, 255, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-odd' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorOdd', cssVariable: '--otk-block-icon-color-odd', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-odd' }));
+        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' }));
 
         // --- Messages (Evens) Section ---
         const evenMessagesSection = createCollapsibleSubSection('Messages (Evens)');
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Font Colour:", storageKey: 'msgDepthEvenHeaderTextColor', cssVariable: '--otk-msg-depth-even-header-text-color', defaultValue: '#555555', inputType: 'color', idSuffix: 'msg-depth-even-header-text', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Even):", storageKey: 'mediaControlsBgColorEven', cssVariable: '--otk-media-controls-bg-color-even', defaultValue: 'rgba(217, 217, 217, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorEven', cssVariable: '--otk-viewer-header-border-color-even', defaultValue: '#777777', inputType: 'color', idSuffix: 'viewer-header-border-even', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthEvenTextColor', cssVariable: '--otk-msg-depth-even-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-even-text', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthEvenBgColor', cssVariable: '--otk-msg-depth-even-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'msg-depth-even-bg', requiresRerender: true }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorEven', cssVariable: '--otk-own-msg-bg-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-bg-even', requiresRerender: true }));
         evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorEven', cssVariable: '--otk-own-msg-border-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-even', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Border Colour:", storageKey: 'ownMsgBorderColorOdd', cssVariable: '--otk-own-msg-border-color-odd', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-border-odd', requiresRerender: true }));
-
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Controls BG (Even):", storageKey: 'mediaControlsBgColorEven', cssVariable: '--otk-media-controls-bg-color-even', defaultValue: 'rgba(217, 217, 217, 0.8)', inputType: 'color', idSuffix: 'media-controls-bg-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Menu Icon Colour:", storageKey: 'mediaMenuIconColor', cssVariable: '--otk-media-menu-icon-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'media-menu-icon' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' }));
+        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' }));
         // --- Misc Section ---
         const miscSectionContent = createCollapsibleSubSection('Misc');
         miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Viewer Arrow Colour:", storageKey: 'viewerArrowColor', cssVariable: '--otk-viewer-arrow-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'viewer-arrow' }));
         miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Viewer Arrow Border Colour:", storageKey: 'viewerArrowBorderColor', cssVariable: '--otk-viewer-arrow-border-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'viewer-arrow-border' }));
         miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Replies Stat Colour:", storageKey: 'repliesStatColor', cssVariable: '--otk-replies-stat-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'replies-stat' }));
+        miscSectionContent.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
+        miscSectionContent.appendChild(createDropdownRow({
+            labelText: 'New Messages Stat Animation:',
+            storageKey: 'newMessagesStatAnimation',
+            options: ['Flash', 'None'],
+            defaultValue: 'Flash',
+            requiresRerender: false
+        }));
+        miscSectionContent.appendChild(createThemeOptionRow({
+            labelText: "New Messages Stat Animation Speed:",
+            storageKey: 'newMessagesStatAnimationSpeed',
+            cssVariable: '--otk-new-messages-stat-animation-speed',
+            defaultValue: '1',
+            inputType: 'number',
+            unit: null,
+            min: 0.1,
+            max: 10,
+            step: 0.1,
+            idSuffix: 'new-messages-stat-animation-speed',
+            requiresRerender: false
+        }));
         miscSectionContent.appendChild(createDropdownRow({
             labelText: 'Replies Stat Animation:',
             storageKey: 'repliesStatAnimation',
@@ -8822,18 +8827,6 @@ function createSectionHeading(text) {
             requiresRerender: false
         }));
         themeOptionsContainer.appendChild(miscSectionContent);
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Media Menu Icon Colour:", storageKey: 'mediaMenuIconColor', cssVariable: '--otk-media-menu-icon-color', defaultValue: '#ff8040', inputType: 'color', idSuffix: 'media-menu-icon' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Header Underline Colour:", storageKey: 'viewerHeaderBorderColorEven', cssVariable: '--otk-viewer-header-border-color-even', defaultValue: '#777777', inputType: 'color', idSuffix: 'viewer-header-border-even', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Font Size (px):", storageKey: 'msgDepthEvenContentFontSize', cssVariable: '--otk-msg-depth-even-content-font-size', defaultValue: '16px', inputType: 'number', unit: 'px', min: 8, max: 24, idSuffix: 'msg-depth-even-content-fontsize', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Background Colour:", storageKey: 'msgDepthEvenBgColor', cssVariable: '--otk-msg-depth-even-bg-color', defaultValue: '#d9d9d9', inputType: 'color', idSuffix: 'msg-depth-even-bg', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Content Font Colour:", storageKey: 'msgDepthEvenTextColor', cssVariable: '--otk-msg-depth-even-text-color', defaultValue: '#333333', inputType: 'color', idSuffix: 'msg-depth-even-text', requiresRerender: true }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Own Post Background Colour:", storageKey: 'ownMsgBgColorEven', cssVariable: '--otk-own-msg-bg-color-even', defaultValue: '#c1d7ef', inputType: 'color', idSuffix: 'own-msg-bg-even', requiresRerender: true }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorOdd', cssVariable: '--otk-block-icon-color-odd', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-odd' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Filter Icon:", storageKey: 'blockIconColorEven', cssVariable: '--otk-block-icon-color-even', defaultValue: '#999999', inputType: 'color', idSuffix: 'block-icon-even' }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorOdd', cssVariable: '--otk-pin-icon-color-odd', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-odd' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon:", storageKey: 'pinIconColorEven', cssVariable: '--otk-pin-icon-color-even', defaultValue: '#666666', inputType: 'color', idSuffix: 'pin-icon-even' }));
-        oddMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
-        evenMessagesSection.appendChild(createThemeOptionRow({ labelText: "Pin Icon (Active):", storageKey: 'pinIconColorActive', cssVariable: '--otk-pin-icon-color-active', defaultValue: '#ff0000', inputType: 'color', idSuffix: 'pin-icon-active' }));
 
         // --- Options Panel Section ---
         const optionsPanelSection = createCollapsibleSubSection('Options Panel');
